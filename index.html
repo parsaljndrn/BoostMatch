@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fake News Classifier</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f6f9; padding: 40px; }
+        .container { background: white; padding: 20px; border-radius: 10px; width: 400px; margin: auto; }
+        textarea { width: 100%; padding: 8px; margin: 5px 0; border-radius: 6px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; background: #007BFF; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Fake News Classifier (XGBoost)</h2>
+        <form method="POST">
+            <label>Sentence 1:</label>
+             <textarea name="sentence1" rows="3" cols="50">{{ sentence1 or "" }}</textarea><br><br>
+
+            <label>Sentence 2:</label><br>
+             <textarea name="sentence2" rows="3" cols="50">{{ sentence2 or "" }}</textarea><br><br>
+
+            <button type="submit">Classify</button>
+        </form>
+        <div class="result">
+    {% if result %}
+        <h3>Prediction: {{ result }}</h3>
+        
+        <p><b>Probabilities:</b></p>
+        <ul>
+            <li>Fake: {{ probs["Fake"] }}%</li>
+            <li>Real: {{ probs["Real"] }}%</li>
+        </ul>
+    {% endif %}
+        </div>
+    </div>
+</body>
+</html>
