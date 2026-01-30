@@ -20,7 +20,7 @@ from sklearn.metrics import (
 TRAIN_FILE = "X_train.csv"
 TEST_FILE = "X_test.csv"
 LABEL_COL = "Label"
-MODEL_OUT = "xgboost_model.pkl"
+MODEL_OUT = "boostmatch.pkl"
 
 # ==============================
 # LOAD DATA
