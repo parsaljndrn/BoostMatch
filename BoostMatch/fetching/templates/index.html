@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Facebook Caption Checker</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f8;
+        }
+        .box {
+            background: white;
+            padding: 25px;
+            width: 450px;
+            margin: 60px auto;
+            border-radius: 10px;
+            box-shadow: 0 0 12px #ccc;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 15px;
+        }
+        button {
+            background: #1877f2;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #145dbf;
+        }
+        .match {
+            color: green;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        .mismatch {
+            color: red;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        .error {
+            color: darkred;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        .info {
+            margin-top: 10px;
+            font-size: 14px;
+            background: #f1f1f1;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2>Facebook Caption–Link Checker</h2>
+
+    <form method="POST">
+        <input type="text" name="fb_link" placeholder="Paste Facebook post link here" required>
+        <button type="submit">Check</button>
+    </form>
+
+    {% if error %}
+        <div class="error">❌ {{ error }}</div>
+    {% endif %}
+
+    {% if result %}
+        <div class="{{ status }}">
+            {{ result }}
+        </div>
+    {% endif %}
+
+    {% if post_id %}
+        <div class="info">
+            <strong>Post ID:</strong><br>
+            {{ post_id }}
+        </div>
+    {% endif %}
+
+    {% if caption %}
+        <div class="info">
+            <strong>Caption:</strong><br>
+            {{ caption }}
+        </div>
+    {% endif %}
+</div>
+
+</body>
+</html>
