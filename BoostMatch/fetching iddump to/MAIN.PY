@@ -1,5 +1,5 @@
 # main.py
-from facebook_fetcher import (
+from facebook_api import (
     extract_post_id,
     fetch_facebook_post,
     fetch_article_text

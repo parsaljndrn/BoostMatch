@@ -1,11 +1,8 @@
-# facebook_fetcher.py
 import requests
 import re
 from urllib.parse import urlparse, parse_qs
-from newspaper import Article
 
-
-PAGE_ACCESS_TOKEN = "EAAgaEvldRRoBQgkkqMKFJVAO6P355ew2Vq6EXw39l7fRE4BKeuzw8edorGHpORjsaQwbzFAmYzXrrZAbIJnloov9grboK7Hsb9F3AxA9domLYXAjNS2DzAU0G42yy44m7Q5pqZA8kmfBXhpxGhuG1ZApsCtFcVaVJAcawddnDVYm4z9pDF2TzyFBzk5TofwV0r55yAm6KHVMYZBNOueUY78KXl6E7BOwc11lqsN2a2aC0spYkAXCigMcOd35ob1wl0el4iehWsAmfrm45SmcJ1mjnmOZBQwG5Xv8ZD"
+PAGE_ACCESS_TOKEN = "PAGE ACCESS TOKEN"
 
 
 def extract_post_id(fb_url):
@@ -27,7 +24,7 @@ def extract_post_id(fb_url):
 
 
 def fetch_facebook_post(post_id):
-    """Fetch caption and embedded article link"""
+    """Fetch Facebook post data only"""
 
     url = f"https://graph.facebook.com/v19.0/{post_id}"
     params = {
@@ -40,13 +37,4 @@ def fetch_facebook_post(post_id):
     if "error" in response:
         raise Exception(response["error"]["message"])
 
-    return response.get("message", ""), response.get("link", "")
-
-
-def fetch_article_text(url):
-    """Download and extract article content"""
-
-    article = Article(url)
-    article.download()
-    article.parse()
-    return article.text
+    return response

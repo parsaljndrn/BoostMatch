@@ -1,0 +1,15 @@
+from newspaper import Article
+
+def extract_article_link(fb_response):
+    """Extract article link from Facebook response"""
+
+    return fb_response.get("link", "")
+
+
+def fetch_article_text(url):
+    """Download and extract article content"""
+
+    article = Article(url)
+    article.download()
+    article.parse()
+    return article.text
