@@ -9,8 +9,8 @@ from STYLO_EXTRACTING import extract_all_features
 # BUILD PATH TO CSV
 # ==============================
 BASE_DIR = Path(__file__).resolve().parent
-model = BASE_DIR.parent / "training" / "xgboost" / "boostmatch.pkl"
-sberto = BASE_DIR.parent / "training" / "sbert" / "fine_tuned_sbert"
+model = BASE_DIR.parent / "models" / "boostmatch" / "boostmatch.pkl"
+sberto = BASE_DIR.parent / "models" / "sbert" / "fine_tuned_sbert"
 
 # Load the trained model
 model = joblib.load(model)
