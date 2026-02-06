@@ -1,41 +1,44 @@
-import sys
 import numpy as np
 import spacy
 import textstat
 import re
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from typing import Dict
 
-# ===================== LOAD NLP MODELS =====================
-print("📦 Loading spaCy model...")
-try:
-    nlp = spacy.load("en_core_web_sm")
-except:
-    print("❌ spaCy model not found. Install with:")
-    print("   python -m spacy download en_core_web_sm")
-    sys.exit(1)
+# ------------------------------
+# Lazy-loaded NLP models
+# ------------------------------
+_nlp = None
+_vader = None
 
-vader = SentimentIntensityAnalyzer()
+def load_nlp_models():
+    global _nlp, _vader
+    if _nlp is None:
+        try:
+            _nlp = spacy.load("en_core_web_sm")
+        except OSError as e:
+            raise RuntimeError(
+                "spaCy model 'en_core_web_sm' not found. "
+                "Install with: python -m spacy download en_core_web_sm"
+            ) from e
+    if _vader is None:
+        _vader = SentimentIntensityAnalyzer()
 
-# ===================== FEATURE FUNCTIONS =====================
 
-def extract_spacy_features(text):
+# ------------------------------
+# Feature extraction functions
+# ------------------------------
+def extract_spacy_features(text: str) -> Dict[str, float]:
     if not text or not text.strip():
-        return {
-            'spacy_pos_noun_ratio': 0,
-            'spacy_pos_verb_ratio': 0,
-            'spacy_pos_adj_ratio': 0,
-            'spacy_pos_adv_ratio': 0,
-            'spacy_pos_pron_ratio': 0,
-            'spacy_stopword_ratio': 0,
-            'spacy_entity_count': 0,
-            'spacy_entity_density': 0,
-            'spacy_avg_token_length': 0,
-            'spacy_sentence_count': 0
-        }
-
-    doc = nlp(text[:100000])
-
-    pos_counts = {'NOUN': 0, 'VERB': 0, 'ADJ': 0, 'ADV': 0, 'PRON': 0}
+        return {f: 0.0 for f in [
+            'spacy_pos_noun_ratio', 'spacy_pos_verb_ratio', 'spacy_pos_adj_ratio',
+            'spacy_pos_adv_ratio', 'spacy_pos_pron_ratio', 'spacy_stopword_ratio',
+            'spacy_entity_count', 'spacy_entity_density',
+            'spacy_avg_token_length', 'spacy_sentence_count'
+        ]}
+    load_nlp_models()
+    doc = _nlp(text[:100000])
+    pos_counts = {'NOUN':0,'VERB':0,'ADJ':0,'ADV':0,'PRON':0}
     stopword_count = 0
     token_lengths = []
 
@@ -52,32 +55,26 @@ def extract_spacy_features(text):
     entity_count = len(doc.ents)
 
     return {
-        'spacy_pos_noun_ratio': pos_counts['NOUN'] / token_count if token_count else 0,
-        'spacy_pos_verb_ratio': pos_counts['VERB'] / token_count if token_count else 0,
-        'spacy_pos_adj_ratio': pos_counts['ADJ'] / token_count if token_count else 0,
-        'spacy_pos_adv_ratio': pos_counts['ADV'] / token_count if token_count else 0,
-        'spacy_pos_pron_ratio': pos_counts['PRON'] / token_count if token_count else 0,
-        'spacy_stopword_ratio': stopword_count / token_count if token_count else 0,
+        'spacy_pos_noun_ratio': pos_counts['NOUN']/token_count if token_count else 0,
+        'spacy_pos_verb_ratio': pos_counts['VERB']/token_count if token_count else 0,
+        'spacy_pos_adj_ratio': pos_counts['ADJ']/token_count if token_count else 0,
+        'spacy_pos_adv_ratio': pos_counts['ADV']/token_count if token_count else 0,
+        'spacy_pos_pron_ratio': pos_counts['PRON']/token_count if token_count else 0,
+        'spacy_stopword_ratio': stopword_count/token_count if token_count else 0,
         'spacy_entity_count': entity_count,
-        'spacy_entity_density': entity_count / token_count if token_count else 0,
-        'spacy_avg_token_length': np.mean(token_lengths) if token_lengths else 0,
+        'spacy_entity_density': entity_count/token_count if token_count else 0,
+        'spacy_avg_token_length': float(np.mean(token_lengths)) if token_lengths else 0,
         'spacy_sentence_count': sent_count
     }
 
-def extract_textstat_features(text):
+def extract_textstat_features(text: str) -> Dict[str, float]:
     if not text or not text.strip():
-        return {
-            'textstat_flesch_reading_ease': 0,
-            'textstat_flesch_kincaid_grade': 0,
-            'textstat_gunning_fog': 0,
-            'textstat_smog_index': 0,
-            'textstat_coleman_liau': 0,
-            'textstat_automated_readability': 0,
-            'textstat_dale_chall': 0,
-            'textstat_difficult_words': 0,
-            'textstat_linsear_write': 0
-        }
-
+        return {k: 0.0 for k in [
+            'textstat_flesch_reading_ease','textstat_flesch_kincaid_grade',
+            'textstat_gunning_fog','textstat_smog_index','textstat_coleman_liau',
+            'textstat_automated_readability','textstat_dale_chall',
+            'textstat_difficult_words','textstat_linsear_write'
+        ]}
     try:
         return {
             'textstat_flesch_reading_ease': textstat.flesch_reading_ease(text),
@@ -91,28 +88,18 @@ def extract_textstat_features(text):
             'textstat_linsear_write': textstat.linsear_write_formula(text)
         }
     except:
-        return {k: 0 for k in [
-            'textstat_flesch_reading_ease',
-            'textstat_flesch_kincaid_grade',
-            'textstat_gunning_fog',
-            'textstat_smog_index',
-            'textstat_coleman_liau',
-            'textstat_automated_readability',
-            'textstat_dale_chall',
-            'textstat_difficult_words',
-            'textstat_linsear_write'
+        return {k:0.0 for k in [
+            'textstat_flesch_reading_ease','textstat_flesch_kincaid_grade',
+            'textstat_gunning_fog','textstat_smog_index','textstat_coleman_liau',
+            'textstat_automated_readability','textstat_dale_chall',
+            'textstat_difficult_words','textstat_linsear_write'
         ]}
 
-def extract_vader_features(text):
+def extract_vader_features(text: str) -> Dict[str, float]:
     if not text or not text.strip():
-        return {
-            'vader_positive': 0,
-            'vader_negative': 0,
-            'vader_neutral': 0,
-            'vader_compound': 0
-        }
-
-    sentiment = vader.polarity_scores(text)
+        return {'vader_positive':0,'vader_negative':0,'vader_neutral':0,'vader_compound':0}
+    load_nlp_models()
+    sentiment = _vader.polarity_scores(text)
     return {
         'vader_positive': sentiment['pos'],
         'vader_negative': sentiment['neg'],
@@ -120,43 +107,32 @@ def extract_vader_features(text):
         'vader_compound': sentiment['compound']
     }
 
-def extract_regex_features(text):
+def extract_regex_features(text: str) -> Dict[str, float]:
     if not text or not text.strip():
-        return {
-            'regex_exclamation_count': 0,
-            'regex_question_count': 0,
-            'regex_quote_count': 0,
-            'regex_uppercase_ratio': 0,
-            'regex_digit_ratio': 0,
-            'regex_punct_ratio': 0,
-            'regex_url_count': 0,
-            'regex_hashtag_count': 0,
-            'regex_mention_count': 0,
-            'regex_ellipsis_count': 0,
-            'regex_word_count': 0,
-            'regex_char_count': 0,
-            'regex_avg_word_length': 0,
-            'regex_lexical_diversity': 0
-        }
+        return {k:0.0 for k in [
+            'regex_exclamation_count','regex_question_count','regex_quote_count',
+            'regex_uppercase_ratio','regex_digit_ratio','regex_punct_ratio',
+            'regex_url_count','regex_hashtag_count','regex_mention_count',
+            'regex_ellipsis_count','regex_word_count','regex_char_count',
+            'regex_avg_word_length','regex_lexical_diversity'
+        ]}
 
     char_count = len(text)
     words = re.findall(r'\b\w+\b', text)
     word_count = len(words)
-
     uppercase_count = sum(1 for c in text if c.isupper())
     digit_count = sum(1 for c in text if c.isdigit())
     punct_count = len(re.findall(r'[.,!?;:"\'-]', text))
-
     unique_words = len(set(w.lower() for w in words))
-    avg_word_length = np.mean([len(w) for w in words]) if words else 0
+    avg_word_length = float(np.mean([len(w) for w in words])) if words else 0
 
     return {
         'regex_exclamation_count': text.count('!'),
         'regex_question_count': text.count('?'),
         'regex_quote_count': len(re.findall(r'["\']', text)),
-        'regex_uppercase_ratio': uppercase_count / char_count if char_count else 0,
-        'regex_digit_ratio': digit_count / char_count if char_count else 0,
-        'regex_punct_ratio': punct_count / char_count if char_count else 0,
+        'regex_uppercase_ratio': uppercase_count/char_count if char_count else 0,
+        'regex_digit_ratio': digit_count/char_count if char_count else 0,
+        'regex_punct_ratio': punct_count/char_count if char_count else 0,
         'regex_url_count': len(re.findall(r'http[s]?://\S+', text)),
         'regex_hashtag_count': len(re.findall(r'#\w+', text)),
         'regex_mention_count': len(re.findall(r'@\w+', text)),
@@ -164,22 +140,20 @@ def extract_regex_features(text):
         'regex_word_count': word_count,
         'regex_char_count': char_count,
         'regex_avg_word_length': avg_word_length,
-        'regex_lexical_diversity': unique_words / word_count if word_count else 0
+        'regex_lexical_diversity': unique_words/word_count if word_count else 0
     }
 
-# ===================== MAIN API FUNCTION =====================
-
-def extract_all_features(text, prefix=''):
+# ------------------------------
+# MAIN API FUNCTION
+# ------------------------------
+def extract_all_features(text: str, prefix: str='') -> Dict[str,float]:
+    """
+    Combine all stylometric, readability, sentiment, and regex features.
+    Returns a dict with optional prefix.
+    """
     features = {}
-
-    for func in [
-        extract_spacy_features,
-        extract_textstat_features,
-        extract_vader_features,
-        extract_regex_features
-    ]:
+    for func in [extract_spacy_features, extract_textstat_features, extract_vader_features, extract_regex_features]:
         result = func(text)
-        for k, v in result.items():
+        for k,v in result.items():
             features[f"{prefix}{k}"] = v
-
     return features

@@ -1,5 +1,60 @@
-<form action="/predict" method="POST">
-    <textarea name="caption" placeholder="Enter caption" required></textarea>
-    <input type="text" name="link" placeholder="Enter link (optional)">
-    <button type="submit">Detect</button>
-</form>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BoostMatch Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <h1>BoostMatch Analyzer</h1>
+    <p class="subtitle">Facebook Post Misleading Detection</p>
+
+    <form method="POST">
+        <input type="text" name="fb_url" placeholder="Paste Facebook post link here..." required>
+        <button type="submit">Analyze Post</button>
+    </form>
+
+    {% if error %}
+    <div class="error-message">{{ error }}</div>
+    {% endif %}
+
+    {% if result %}
+    <div class="result-card">
+        <div class="status-row">
+            <span class="label">Prediction:</span>
+            {% if result.prediction == "MISLEADING" %}
+                <span class="badge badge-red">MISLEADING</span>
+            {% else %}
+                <span class="badge badge-green">NOT MISLEADING</span>
+            {% endif %}
+        </div>
+
+        <div class="field">
+            <div class="label">Similarity Score:</div>
+            <div class="value">{{ result.similarity }}%</div>
+            <div class="hint">Measures semantic similarity. Higher % = closer meaning.</div>
+        </div>
+
+        <div class="field">
+            <div class="label">Caption</div>
+            <div class="box">{{ result.caption }}</div>
+        </div>
+
+        <div class="field">
+            <div class="label">Article Link</div>
+            <div class="box">
+                <a href="{{ result.article_link }}" target="_blank">{{ result.article_link }}</a>
+            </div>
+        </div>
+
+        <div class="field">
+            <div class="label">Article Content</div>
+            <div class="box scroll-box">{{ result.article_text }}</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>

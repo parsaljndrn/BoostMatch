@@ -3,30 +3,40 @@ import pandas as pd
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-from STYLO_EXTRACTING import extract_all_features
+from .STYLO_EXTRACTING import extract_all_features
 
-# ==============================
-# BUILD PATH TO CSV
-# ==============================
-BASE_DIR = Path(__file__).resolve().parent
-model = BASE_DIR.parent / "models" / "boostmatch" / "boostmatch.pkl"
-sberto = BASE_DIR.parent / "models" / "sbert" / "fine_tuned_sbert"
+# clean relative paths (project-root based)
+MODEL_PATH = Path("models/boostmatch/boostmatch.pkl")
+SBERT_PATH = Path("models/sbert/fine_tuned_sbert")
 
-# Load the trained model
-model = joblib.load(model)
-sbert_model = SentenceTransformer(str(sberto))
+boost_model = joblib.load(MODEL_PATH)
+sbert_model = SentenceTransformer(str(SBERT_PATH))
 
-# Get feature names from model
-feature_names = model.get_booster().feature_names
+feature_names = boost_model.get_booster().feature_names
 
 
 def check_misleading(caption: str, article_text: str):
-    emb1 = sbert_model.encode(caption)
-    emb2 = sbert_model.encode(article_text)
 
-    cos_sim = cosine_similarity([emb1], [emb2])[0][0]
+    caption = caption or ""
+    article_text = article_text or ""
 
-    stylometry = extract_all_features(caption)
+    if not caption.strip() or not article_text.strip():
+        return 0.0, "INSUFFICIENT TEXT"
+
+    emb1 = sbert_model.encode(caption, convert_to_numpy=True)
+    emb2 = sbert_model.encode(article_text, convert_to_numpy=True)
+
+    cos_sim = float(
+        cosine_similarity(
+            emb1.reshape(1, -1),
+            emb2.reshape(1, -1)
+        )[0][0]
+    )
+
+    try:
+        stylometry = extract_all_features(caption)
+    except:
+        stylometry = {}
 
     features = {
         **stylometry,
@@ -39,9 +49,9 @@ def check_misleading(caption: str, article_text: str):
         if col not in df.columns:
             df[col] = 0.0
 
-    df = df[feature_names]
+    df = df[feature_names].astype(float)
 
-    pred = model.predict(df)[0]
+    pred = boost_model.predict(df)[0]
     prediction = "MISLEADING" if pred == 1 else "NOT MISLEADING"
 
     return cos_sim, prediction
