@@ -2,7 +2,9 @@ import requests
 import re
 import os
 from urllib.parse import urlparse, parse_qs
+from dotenv import load_dotenv
 
+load_dotenv()
 GRAPH_VERSION = "v24.0"
 PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")  # Make sure this is set in your env
 
