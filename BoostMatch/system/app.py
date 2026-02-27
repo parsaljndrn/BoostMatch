@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request
 
 from services.fb_graph import extract_post_id, fetch_facebook_post
-from services.article_tools import get_article_content
+from services.article_tools import get_article_data
 from services.matcher import check_misleading
 
 app = Flask(__name__)
@@ -27,7 +27,8 @@ def index():
             if not article_link:
                 raise ValueError("No article link found in post")
 
-            article_text = get_article_content(article_link)
+            article_data = get_article_data(article_link)
+            article_text = article_data["content"]
 
             similarity, prediction = check_misleading(caption, article_text)
 
