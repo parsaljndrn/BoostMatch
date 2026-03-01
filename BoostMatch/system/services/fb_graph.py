@@ -4,59 +4,130 @@ import os
 from urllib.parse import urlparse, parse_qs
 
 GRAPH_VERSION = "v24.0"
-PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")  # Make sure this is set in your env
+PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
+
+FACEBOOK_DOMAINS = {
+    "facebook.com",
+    "www.facebook.com",
+    "m.facebook.com",
+    "fb.watch",
+}
+
+# Facebook links that are NOT posts
+NON_POST_PATHS = [
+    "profile.php",
+    "/photo/",
+    "/photos/",
+    "/watch/",
+    "/groups/",
+    "/pages/",
+    "/events/",
+]
 
 
-def extract_post_id(fb_url: str) -> str | None:
-    """Extract Facebook post ID from common URL formats"""
+# =========================================================
+# POST ID EXTRACTION
+# =========================================================
+
+def extract_post_id(fb_url: str) -> str:
+    """
+    Accepts ONLY Facebook POST links.
+    Raises clear errors for invalid input.
+    """
+
     if not fb_url:
-        return None
+        raise ValueError(
+            "The link pasted is not a Facebook link. Please paste a Facebook link."
+        )
 
-    # /posts/123456789
-    match = re.search(r"/posts/(\d+)", fb_url)
+    parsed = urlparse(fb_url)
+    domain = parsed.netloc.lower()
+    path = parsed.path.lower()
+
+    # 1️⃣ Validate Facebook domain
+    if not any(d in domain for d in FACEBOOK_DOMAINS):
+        raise ValueError(
+            "The link pasted is not a Facebook link. Please paste a Facebook link."
+        )
+
+    # 2️⃣ Reject known non-post Facebook links
+    if any(p in path for p in NON_POST_PATHS):
+        raise ValueError(
+            "The link pasted is not a Facebook post link."
+        )
+
+    # 3️⃣ /posts/{id}
+    match = re.search(r"/posts/(\d+)", path)
     if match:
         return match.group(1)
 
-    # permalink.php?id=xxx&story_fbid=yyy
-    parsed = urlparse(fb_url)
-    if "permalink.php" in parsed.path:
+    # 4️⃣ permalink.php?id=PAGE_ID&story_fbid=POST_ID
+    if "permalink.php" in path:
         query = parse_qs(parsed.query)
         story_fbid = query.get("story_fbid", [None])[0]
         page_id = query.get("id", [None])[0]
         if story_fbid and page_id:
             return f"{page_id}_{story_fbid}"
 
-    # fallback: any numeric ID in URL
+    # 5️⃣ reels / videos / fallback numeric ID
     match = re.search(r"(\d{8,})", fb_url)
     if match:
         return match.group(1)
 
-    return None
+    # 6️⃣ Facebook but not a post
+    raise ValueError(
+        "The link pasted is not a Facebook post link."
+    )
 
+
+# =========================================================
+# GRAPH API FETCH
+# =========================================================
 
 def fetch_facebook_post(post_id: str) -> dict:
-    """Fetch Facebook post caption and link using Graph API"""
-    if not post_id:
-        raise ValueError("Invalid post ID")
+    """
+    Fetch caption and attached link from Facebook Graph API.
+    Enforces caption presence.
+    """
+
     if not PAGE_ACCESS_TOKEN:
-        raise ValueError("FB_PAGE_ACCESS_TOKEN not set in environment")
+        raise ValueError("FB_PAGE_ACCESS_TOKEN is not configured.")
 
     url = f"https://graph.facebook.com/{GRAPH_VERSION}/{post_id}"
-    params = {"fields": "message,link", "access_token": PAGE_ACCESS_TOKEN}
+    params = {
+        "fields": "message,link",
+        "access_token": PAGE_ACCESS_TOKEN,
+    }
 
     try:
         resp = requests.get(url, params=params, timeout=10)
         resp.raise_for_status()
         data = resp.json()
+
     except requests.exceptions.Timeout:
-        raise Exception("Facebook API timeout")
-    except requests.exceptions.RequestException as e:
-        raise Exception(f"Facebook API request failed: {e}")
+        raise ValueError(
+            "Facebook API timeout. Please try again."
+        )
+
+    except requests.exceptions.RequestException:
+        raise ValueError(
+            "Failed to connect to Facebook Graph API."
+        )
 
     if "error" in data:
-        raise Exception(data["error"]["message"])
+        raise ValueError(data["error"]["message"])
+
+    caption = (data.get("message") or "").strip()
+
+    # Caption is missing OR only a URL
+    url_only_pattern = r"^https?://\S+$"
+
+    if not caption or re.fullmatch(url_only_pattern, caption):
+        raise ValueError(
+        "The Facebook post link have no caption text available."
+    )   
 
     return {
-        "caption": data.get("message", ""),
-        "article_link": data.get("link")
+        "caption": caption,
+        "article_link": data.get("link"),
     }
