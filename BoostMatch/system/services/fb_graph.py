@@ -2,13 +2,11 @@ import requests
 import re
 import os
 from urllib.parse import urlparse, parse_qs
+from langdetect import detect
+from deep_translator import GoogleTranslator
 
 GRAPH_VERSION = "v24.0"
 PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
-
-# ---------------------------------------------------------
-# FACEBOOK CONFIG
-# ---------------------------------------------------------
 
 FACEBOOK_DOMAINS = {
     "facebook.com",
@@ -43,9 +41,6 @@ BLOCKED_DOMAINS = [
 # =========================================================
 
 def resolve_redirect(url: str) -> str:
-    """
-    Resolve shortened or redirect URLs (bit.ly, fb share links).
-    """
 
     try:
 
@@ -67,14 +62,10 @@ def resolve_redirect(url: str) -> str:
 # =========================================================
 
 def normalize_facebook_url(url: str) -> str:
-    """
-    Normalize Facebook URLs like share links.
-    """
 
     parsed = urlparse(url)
     path = parsed.path.lower()
 
-    # share links must be resolved
     if "/share/" in path:
         return resolve_redirect(url)
 
@@ -101,30 +92,20 @@ def extract_post_id(fb_url: str) -> str:
     domain = parsed.netloc.lower()
     path = parsed.path.lower()
 
-    # Validate Facebook domain
     if not any(d in domain for d in FACEBOOK_DOMAINS):
         raise ValueError(
             "The link pasted is not a Facebook link. Please paste a Facebook link."
         )
 
-    # Reject known non-post paths
     if any(p in path for p in NON_POST_PATHS):
         raise ValueError(
             "The link pasted is not a Facebook post link."
         )
 
-    # -----------------------------------------------------
-    # /username/posts/{post_id}
-    # -----------------------------------------------------
-
     match = re.search(r"/posts/(\d+)", path)
 
     if match:
         return match.group(1)
-
-    # -----------------------------------------------------
-    # permalink.php?id=PAGE&story_fbid=POST
-    # -----------------------------------------------------
 
     if "permalink.php" in path:
 
@@ -135,10 +116,6 @@ def extract_post_id(fb_url: str) -> str:
 
         if story_fbid and page_id:
             return f"{page_id}_{story_fbid}"
-
-    # -----------------------------------------------------
-    # fallback numeric ID (videos, reels, etc.)
-    # -----------------------------------------------------
 
     match = re.search(r"(\d{8,})", fb_url)
 
@@ -151,14 +128,15 @@ def extract_post_id(fb_url: str) -> str:
 
 
 # =========================================================
-# URL EXTRACTION UTILITIES
+# TEXT UTILITIES
 # =========================================================
 
-def extract_urls_from_text(text: str) -> list:
+def extract_urls_from_text(text: str):
+
     return re.findall(URL_PATTERN, text)
 
 
-def extract_first_url(text: str) -> str | None:
+def extract_first_url(text: str):
 
     urls = extract_urls_from_text(text)
 
@@ -168,11 +146,84 @@ def extract_first_url(text: str) -> str | None:
     return None
 
 
-def remove_urls_from_text(text: str) -> str:
+def remove_urls_from_text(text: str):
 
-    cleaned = re.sub(URL_PATTERN, "", text)
+    text = re.sub(URL_PATTERN, "", text)
+    text = re.sub(r"\(\s*\)", "", text)
+    text = re.sub(r"\s+", " ", text)
 
-    return cleaned.strip()
+    return text.strip()
+
+
+# =========================================================
+# LANGUAGE DETECTION + TRANSLATION
+# =========================================================
+
+def normalize_language(text: str):
+
+    if not text:
+        return text, "unknown"
+
+    text_for_detection = re.sub(URL_PATTERN, "", text).strip()
+
+    if not text_for_detection:
+        text_for_detection = text
+
+    try:
+
+        language = detect(text_for_detection)
+
+    except:
+
+        return text, "unknown"
+
+    if language == "en":
+        return text, "en"
+
+    try:
+
+        translated = GoogleTranslator(
+            source="auto",
+            target="en"
+        ).translate(text)
+
+        return translated, language
+
+    except:
+
+        return text, language
+
+
+# =========================================================
+# ATTACHMENT URL EXTRACTION (NEW)
+# =========================================================
+
+def extract_attachment_urls(data: dict):
+
+    urls = []
+
+    attachments = data.get("attachments", {}).get("data", [])
+
+    for item in attachments:
+
+        target = item.get("target", {})
+        url = target.get("url")
+
+        if url:
+            urls.append(url)
+
+        # handle carousel / multi-attachment
+        subattachments = item.get("subattachments", {}).get("data", [])
+
+        for sub in subattachments:
+
+            target = sub.get("target", {})
+            url = target.get("url")
+
+            if url:
+                urls.append(url)
+
+    return urls
 
 
 # =========================================================
@@ -202,7 +253,7 @@ def fetch_facebook_post(post_id: str) -> dict:
     url = f"https://graph.facebook.com/{GRAPH_VERSION}/{post_id}"
 
     params = {
-        "fields": "message,link",
+        "fields": "message,link,attachments{target,url,subattachments}",
         "access_token": PAGE_ACCESS_TOKEN,
     }
 
@@ -235,6 +286,8 @@ def fetch_facebook_post(post_id: str) -> dict:
 
     attached_link = data.get("link")
 
+    attachment_links = extract_attachment_urls(data)
+
     # -----------------------------------------------------
     # FILTER: NO CAPTION
     # -----------------------------------------------------
@@ -243,10 +296,6 @@ def fetch_facebook_post(post_id: str) -> dict:
         raise ValueError(
             "The Facebook post link have no caption text available."
         )
-
-    # -----------------------------------------------------
-    # FILTER: CAPTION ONLY URL
-    # -----------------------------------------------------
 
     url_only_pattern = r"^https?://\S+$"
 
@@ -261,6 +310,9 @@ def fetch_facebook_post(post_id: str) -> dict:
 
     article_link = attached_link
 
+    if not article_link and attachment_links:
+        article_link = attachment_links[0]
+
     if not article_link:
         article_link = extract_first_url(caption)
 
@@ -269,28 +321,19 @@ def fetch_facebook_post(post_id: str) -> dict:
             "The link attached is not article link, please paste a Facebook post link with article link attached to it."
         )
 
-    # -----------------------------------------------------
-    # EXPAND SHORT LINKS
-    # -----------------------------------------------------
-
     article_link = resolve_redirect(article_link)
-
-    # -----------------------------------------------------
-    # VALIDATE ARTICLE DOMAIN
-    # -----------------------------------------------------
 
     if not is_valid_article_link(article_link):
         raise ValueError(
             "The link attached is not a valid article link."
         )
 
-    # -----------------------------------------------------
-    # CLEAN CAPTION
-    # -----------------------------------------------------
+    caption_en, original_language = normalize_language(caption)
 
-    clean_caption = remove_urls_from_text(caption)
+    clean_caption = remove_urls_from_text(caption_en)
 
     return {
         "caption": clean_caption,
+        "original_language": original_language,
         "article_link": article_link,
     }
