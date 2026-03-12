@@ -52,6 +52,6 @@ def check_misleading(caption: str, article_text: str):
     df = df[feature_names].astype(float)
 
     pred = boost_model.predict(df)[0]
-    prediction = "MISLEADING" if pred == 1 else "NOT MISLEADING"
+    prediction = "NOT MISLEADING" if pred == 1 else "NOT"
 
     return cos_sim, prediction
