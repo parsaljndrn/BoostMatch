@@ -2,59 +2,127 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BoostMatch Analyzer</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .transcript-container {
+            display: flex;
+            gap: 20px;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .transcript-wrapper {
+            flex: 1;
+            min-width: 300px;
+        }
+        .scroll-box {
+            max-height: 220px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .empty {
+            color: #888;
+            font-style: italic;
+        }
+        .field + .field { margin-top: 1.2rem; }
+    </style>
 </head>
 <body>
 
 <div class="container">
     <h1>BoostMatch Analyzer</h1>
-    <p class="subtitle">Facebook Post Misleading Detection</p>
+    <p class="subtitle">Facebook Post Misleading Content Detection</p>
 
-    <form method="POST">
-        <input type="text" name="fb_url" placeholder="Paste Facebook post link here..." required>
-        <button type="submit">Analyze Post</button>
+    <form method="POST" id="mainForm">
+        <input type="url" name="fb_url" placeholder="Paste Facebook post / reel / video link here..." required autocomplete="off">
+        <button type="submit" id="submitBtn">Analyze Post</button>
     </form>
 
     {% if error %}
-    <div class="error-message">{{ error }}</div>
+    <div class="error-message" id="errorBox">{{ error }}</div>
     {% endif %}
 
     {% if result %}
-    <div class="result-card">
+    <div class="result-card" id="resultCard">
         <div class="status-row">
             <span class="label">Prediction:</span>
-            {% if result.prediction == "MISLEADING" %}
-                <span class="badge badge-red">MISLEADING</span>
-            {% else %}
-                <span class="badge badge-green">NOT MISLEADING</span>
-            {% endif %}
+            <span class="badge {% if result.prediction == 'MISLEADING' %}badge-red{% else %}badge-green{% endif %}">
+                {{ result.prediction }}
+            </span>
         </div>
 
         <div class="field">
-            <div class="label">Similarity Score:</div>
+            <div class="label">Similarity Score</div>
             <div class="value">{{ result.similarity }}%</div>
-            <div class="hint">Measures semantic similarity. Higher % = closer meaning.</div>
         </div>
 
+        {% if result.has_transcript %}
+        <div class="transcript-container">
+            <div class="transcript-wrapper">
+                <div class="label">Tagalog Transcription (Whisper)</div>
+                <div class="box scroll-box">{{ result.transcription_tl }}</div>
+            </div>
+            <div class="transcript-wrapper">
+                <div class="label">English Translation (Whisper)</div>
+                <div class="box scroll-box">{{ result.transcription_en }}</div>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="field">
-            <div class="label">Caption</div>
+            <div class="label">Post Caption</div>
             <div class="box">{{ result.caption }}</div>
         </div>
 
         <div class="field">
-            <div class="label">Article Link</div>
-            <div class="box">
-                <a href="{{ result.article_link }}" target="_blank">{{ result.article_link }}</a>
+            <div class="label">Article Content (first part)</div>
+            <div class="box scroll-box">
+                {% if result.article_text %}
+                    {{ result.article_text }}
+                {% else %}
+                    <span class="empty">[No article text extracted]</span>
+                {% endif %}
             </div>
         </div>
 
         <div class="field">
-            <div class="label">Article Content</div>
-            <div class="box scroll-box">{{ result.article_text }}</div>
+            <div class="label">Article Link
+                {% if result.link_type %}
+                <span style="margin-left:8px; font-size:0.75rem; padding:2px 8px; border-radius:4px; font-weight:600;
+                    {% if result.link_type == 'article' %} background:#d4edda; color:#155724;
+                    {% elif result.link_type == 'shop' %} background:#fff3cd; color:#856404;
+                    {% elif result.link_type == 'video' %} background:#cce5ff; color:#004085;
+                    {% elif result.link_type == 'social' %} background:#e2d9f3; color:#4a235a;
+                    {% else %} background:#f8d7da; color:#721c24;
+                    {% endif %}">
+                    {{ result.link_type | upper }}
+                </span>
+                {% endif %}
+            </div>
+            <div class="box">
+                {% if result.article_link %}
+                <a href="{{ result.article_link }}" target="_blank" rel="noopener">{{ result.article_link }}</a>
+                {% else %}
+                <span class="empty">[No link attached]</span>
+                {% endif %}
+            </div>
         </div>
     </div>
     {% endif %}
 </div>
+
+<script>
+    document.getElementById('mainForm').onsubmit = function() {
+        const btn = document.getElementById('submitBtn');
+        btn.innerText = "Analyzing... (may take 10–40 seconds)";
+        btn.disabled = true;
+    };
+</script>
 </body>
 </html>
