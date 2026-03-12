@@ -4,6 +4,9 @@ import os
 from urllib.parse import urlparse, parse_qs
 from langdetect import detect
 from deep_translator import GoogleTranslator
+from dotenv import load_dotenv
+
+load_dotenv()
 
 GRAPH_VERSION = "v24.0"
 PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
