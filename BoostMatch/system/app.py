@@ -6,19 +6,15 @@ import webbrowser
 from datetime import datetime
 from pathlib import Path
 from threading import Timer
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-
 import whisper
 import yt_dlp
 from dotenv import load_dotenv
 from flask import Flask, render_template, request
 from langdetect import detect as lang_detect
-
 from services.fb_graph import extract_post_id, fetch_facebook_post
 from services.article_tools import get_article_content
 from services.matcher import check_misleading
-
 load_dotenv()
 
 app = Flask(__name__)
@@ -139,10 +135,12 @@ def _preprocess_text(text: str) -> str:
 
 
 LINK_TYPE_NOTES = {
-    "shop":    "The attached link points to a shopping/e-commerce page. No article content to analyze.",
-    "social":  "The attached link points to a social media page. No article content to analyze.",
-    "video":   "The attached link points to a video platform. No article content to analyze.",
-    "unknown": "The attached link did not return enough readable content to analyze.",
+    "shop":        "The attached link points to a shopping/e-commerce page. No article content to analyze.",
+    "social":      "The attached link points to a social media page. No article content to analyze.",
+    "video":       "The attached link points to a video platform. No article content to analyze.",
+    "unknown":     "The attached link did not return enough readable content to analyze.",
+    "ad_redirect": "LINK REDIRECTS TO AN AD",
+    "not_article": "CANNOT ANALYZE: LINK ATTACHMENT IS NOT AN ARTICLE",
 }
 
 

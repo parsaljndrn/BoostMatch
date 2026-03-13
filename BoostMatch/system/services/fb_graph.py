@@ -114,7 +114,7 @@ def _fetch_as_post(post_id: str, access_token: str):
 def _fetch_as_video(video_id: str, access_token: str):
     url = f"https://graph.facebook.com/{GRAPH_VERSION}/{video_id}"
     params = {
-        "fields": "description,title,message,embeddable,source,permalink_url",
+        "fields": "description,title,embeddable,source,permalink_url",
         "access_token": access_token,
     }
     resp = requests.get(url, params=params, timeout=15)
@@ -160,13 +160,18 @@ def fetch_facebook_post(post_id: str, id_type: str = "post") -> dict:
         err = data["error"]
         raise Exception(f"Facebook API error ({err.get('code')}): {err.get('message')}")
 
-    caption = (
-        data.get("message")
-        or data.get("description")
-        or data.get("title")
-        or data.get("story")
-        or ""
-    ).strip()
+    if id_type == "video":
+        caption = (
+            data.get("description")
+            or data.get("title")
+            or ""
+        ).strip()
+    else:
+        caption = (
+            data.get("message")
+            or data.get("story")
+            or ""
+        ).strip()
 
     article_link = ""
     video_url = ""

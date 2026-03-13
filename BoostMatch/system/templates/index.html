@@ -31,6 +31,7 @@
             font-style: italic;
         }
         .field + .field { margin-top: 1.2rem; }
+        .badge-orange { background: #fff3cd; color: #856404; border: 1px solid #ffc107; border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -55,6 +56,11 @@
             <span class="badge {% if result.prediction == 'MISLEADING' %}badge-red{% else %}badge-green{% endif %}">
                 {{ result.prediction }}
             </span>
+            {% if result.link_type == 'ad_redirect' %}
+            <span class="badge badge-orange" style="margin-left:8px;">⚠ LINK REDIRECTS TO AN AD</span>
+            {% elif result.link_type == 'not_article' %}
+            <span class="badge badge-orange" style="margin-left:8px;">⚠ CANNOT ANALYZE: LINK ATTACHMENT IS NOT AN ARTICLE</span>
+            {% endif %}
         </div>
 
         <div class="field">

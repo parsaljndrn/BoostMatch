@@ -46,47 +46,52 @@ AD_TEXT_PATTERN = re.compile(
 )
 
 
-def classify_link(url: str) -> str:
-    """
-    Classify a URL before fetching it.
+def _domain_of(url: str) -> str:
+    return urlparse(url).netloc.lower().replace("www.", "")
 
-    Returns one of:
-      'article'  - likely a news/blog article
-      'shop'     - e-commerce / product page
-      'social'   - social media platform
-      'video'    - video platform
-      'unknown'  - could not determine, will still attempt extraction
-    """
+
+def classify_link(url: str) -> str:
     if not url:
         return "unknown"
-
-    domain = urlparse(url).netloc.lower()
-    domain = domain.replace("www.", "")
-
+    domain = _domain_of(url)
     if any(d in domain for d in SHOP_DOMAINS):
         return "shop"
     if any(d in domain for d in VIDEO_DOMAINS):
         return "video"
     if any(d in domain for d in SOCIAL_DOMAINS):
         return "social"
-
     return "article"
+
+
+def _check_redirect(url: str) -> tuple[str, bool]:
+    """
+    Follow redirects and return (final_url, redirected_to_ad).
+    redirected_to_ad is True if the final destination is an ad/shop domain.
+    """
+    try:
+        resp = requests.head(url, allow_redirects=True, timeout=10,
+                             headers={"User-Agent": "Mozilla/5.0"})
+        final_url = resp.url
+        if final_url and final_url.rstrip("/") != url.rstrip("/"):
+            final_domain = _domain_of(final_url)
+            is_ad = any(d in final_domain for d in AD_DOMAINS + SHOP_DOMAINS)
+            print(f"[article_tools] Redirect: {url} -> {final_url} | ad={is_ad}")
+            return final_url, is_ad
+    except Exception as e:
+        print(f"[article_tools] Redirect check failed: {e}")
+    return url, False
 
 
 def _clean_soup(soup):
     for tag in soup(["script", "style", "nav", "footer", "header", "aside", "iframe", "form"]):
         tag.decompose()
-
     for a_tag in soup.find_all("a", href=True):
         if any(domain in a_tag.get("href", "").lower() for domain in AD_DOMAINS):
             a_tag.decompose()
-
     for tag in soup.find_all(class_=AD_CLASS_ID_PATTERN):
         tag.decompose()
-
     for tag in soup.find_all(id=AD_CLASS_ID_PATTERN):
         tag.decompose()
-
     return soup
 
 
@@ -113,24 +118,35 @@ def _extract_fallback(soup) -> str:
 
 def get_article_content(url: str) -> tuple[str, str]:
     """
-    Fetch and clean content from a URL.
+    Returns (text_content, link_type).
 
-    Returns:
-        (text_content, link_type)
-        link_type is one of: 'article', 'shop', 'video', 'social', 'unknown'
+    link_type values:
+      'article'       - successfully extracted article content
+      'shop'          - e-commerce domain
+      'video'         - video platform
+      'social'        - social media platform
+      'ad_redirect'   - URL redirected to an ad/shop
+      'not_article'   - fetched but not enough readable content
+      'unknown'       - fetch failed
     """
     if not url or not url.strip():
         return "", "unknown"
 
-    link_type = classify_link(url)
+    final_url, is_ad_redirect = _check_redirect(url)
+
+    if is_ad_redirect:
+        print("LINK REDIRECTS TO AN AD")
+        return "", "ad_redirect"
+
+    link_type = classify_link(final_url)
 
     if link_type == "shop":
-        print(f"[article_tools] Skipping shop link: {url}")
-        return "", "shop"
+        print("LINK REDIRECTS TO AN AD")
+        return "", "ad_redirect"
 
-    if link_type == "social":
-        print(f"[article_tools] Skipping social link: {url}")
-        return "", "social"
+    if link_type in ("social", "video"):
+        print(f"CANNOT ANALYZE: LINK ATTACHMENT IS NOT AN ARTICLE ({link_type})")
+        return "", "not_article"
 
     headers = {
         "User-Agent": (
@@ -141,11 +157,11 @@ def get_article_content(url: str) -> tuple[str, str]:
     }
 
     try:
-        response = requests.get(url, headers=headers, timeout=12)
+        response = requests.get(final_url, headers=headers, timeout=12)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"[article_tools] Failed to fetch: {e}")
-        return "", link_type
+        return "", "unknown"
 
     soup = BeautifulSoup(response.text, "html.parser")
     soup = _clean_soup(soup)
@@ -159,6 +175,7 @@ def get_article_content(url: str) -> tuple[str, str]:
     text_content = " ".join(text_content.split())
 
     if len(text_content.strip()) < 50:
-        link_type = "unknown"
+        print("CANNOT ANALYZE: LINK ATTACHMENT IS NOT AN ARTICLE")
+        return "", "not_article"
 
-    return text_content, link_type
+    return text_content, "article"
