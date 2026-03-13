@@ -25,6 +25,56 @@ SOCIAL_DOMAINS = [
 ]
 
 
+# =====================================================
+# HEADLINE EXTRACTOR (NEW FUNCTION)
+# =====================================================
+
+def extract_article_headline(url: str) -> str:
+    """
+    Extracts the headline of an article.
+
+    Ensures the link is a valid article and then retrieves
+    the headline using multiple fallback methods.
+    """
+
+    if not url:
+        raise ValueError(
+            "This Facebook post does not contain an article link. "
+            "Please paste a Facebook post with an article attached."
+        )
+
+    if _is_social_or_video_link(url):
+        raise ValueError(
+            "The link attached is not an article link. "
+            "Please paste a Facebook post link with an article link attached to it."
+        )
+
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=15)
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        raise ValueError(
+            "Failed to fetch the attached article. "
+            "The website may be unreachable or blocked."
+        )
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    _clean_dom(soup)
+
+    headline = _extract_headline(soup)
+
+    if not headline:
+        raise ValueError(
+            "Unable to extract the headline from the article."
+        )
+
+    return headline
+
+
+# =====================================================
+# ORIGINAL FULL ARTICLE EXTRACTOR (UNCHANGED)
+# =====================================================
+
 def extract_article_for_nlp(url: str) -> str:
     """
     STRICT article extractor.
@@ -68,7 +118,7 @@ def extract_article_for_nlp(url: str) -> str:
 
 # ================= HELPERS =================
 
-def _is_social_or_video_link(url: str) -> bool:
+def _is_social_or_video_link(url: str):
     domain = urlparse(url).netloc.lower()
     return any(d in domain for d in SOCIAL_DOMAINS)
 
@@ -78,7 +128,41 @@ def _clean_dom(soup):
         tag.decompose()
 
 
-def _extract_main_text(soup) -> str:
+# =====================================================
+# HEADLINE EXTRACTION LOGIC
+# =====================================================
+
+def _extract_headline(soup):
+
+    # 1️⃣ OpenGraph title (most reliable)
+    og_title = soup.find("meta", property="og:title")
+    if og_title and og_title.get("content"):
+        return og_title.get("content").strip()
+
+    # ⭐ IMPROVEMENT (Twitter headline support)
+    twitter_title = soup.find("meta", attrs={"name": "twitter:title"})
+    if twitter_title and twitter_title.get("content"):
+        return twitter_title.get("content").strip()
+
+    # 3️⃣ Standard HTML <title>
+    title_tag = soup.find("title")
+    if title_tag and title_tag.text:
+        return title_tag.text.strip()
+
+    # 4️⃣ First H1
+    h1_tag = soup.find("h1")
+    if h1_tag and h1_tag.text:
+        return h1_tag.text.strip()
+
+    return None
+
+
+# =====================================================
+# ARTICLE TEXT EXTRACTION
+# =====================================================
+
+def _extract_main_text(soup):
+
     containers = [
         soup.find("article"),
         soup.find("main"),
