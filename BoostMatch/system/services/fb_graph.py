@@ -73,8 +73,11 @@ def normalize_facebook_url(url: str) -> str:
 # =========================================================
 # POST ID EXTRACTION
 # =========================================================
-
-def extract_post_id(fb_url: str) -> str:
+def extract_post_id(fb_url: str):
+    """
+    Extracts a Facebook post/reel/video ID and returns a tuple: (id, type)
+    type: 'post', 'reel', or 'video'
+    """
     if not fb_url:
         raise ValueError("Please paste a Facebook link.")
     
@@ -85,26 +88,35 @@ def extract_post_id(fb_url: str) -> str:
     
     if not any(d in domain for d in FACEBOOK_DOMAINS):
         raise ValueError("The link pasted is not a Facebook link.")
-    
-    # Check if it's a direct photo/video link which we might want to reject
-    # but allow if it's part of a post structure
-    
+
+    # Normal post
     match = re.search(r"/posts/(\d+)", path)
     if match:
-        return match.group(1)
-        
+        return match.group(1), "post"
+
+    # Reels
+    reel_match = re.search(r"/reel/([a-zA-Z0-9]+)", path)
+    if reel_match:
+        return reel_match.group(1), "reel"
+
+    # Shared videos
+    video_match = re.search(r"/v/([a-zA-Z0-9]+)", path)
+    if video_match:
+        return video_match.group(1), "video"
+
+    # Permalink.php
     if "permalink.php" in path:
         query = parse_qs(parsed.query)
         story_fbid = query.get("story_fbid", [None])[0]
         page_id = query.get("id", [None])[0]
         if story_fbid and page_id:
-            return f"{page_id}_{story_fbid}"
-            
-    # Fallback for numeric IDs in URL
+            return f"{page_id}_{story_fbid}", "post"
+
+    # Fallback: any numeric ID in the URL
     match = re.search(r"(\d{8,})", fb_url)
     if match:
-        return match.group(1)
-        
+        return match.group(1), "post"
+
     raise ValueError("Could not extract a Post ID from this Facebook link.")
 
 # =========================================================
@@ -212,21 +224,40 @@ def is_valid_article_link(url: str) -> bool:
             return False
     return True
 
+def extract_video_url(data):
+    attachments = data.get("attachments", {}).get("data", [])
+
+    for item in attachments:
+        if item.get("media_type") == "video":
+            return item.get("url")
+
+        subattachments = item.get("subattachments", {}).get("data", [])
+        for sub in subattachments:
+            if sub.get("media_type") == "video":
+                return sub.get("url")
+
+    return None
+
 # =========================================================
 # FETCH FACEBOOK POST
 # =========================================================
 
-def fetch_facebook_post(post_id: str) -> dict:
+def fetch_facebook_post(fb_url: str) -> dict:
     if not PAGE_ACCESS_TOKEN:
         raise ValueError("FB_PAGE_ACCESS_TOKEN is not configured.")
-        
+
+    # 1️⃣ Extract ID and type
+    post_id, id_type = extract_post_id(fb_url)
+
     url = f"https://graph.facebook.com/{GRAPH_VERSION}/{post_id}"
-    params = {
-        # 'link' is the attached link, 'message' is the caption
-        "fields": "message,link,attachments{url,type,subattachments{url,type}}",
-        "access_token": PAGE_ACCESS_TOKEN,
-    }
-    
+    if id_type == "post":
+        fields = "message,link,attachments{media_type,url,media,subattachments{media_type,url,media}}"
+    else:  # reel or video
+        fields = "description,source,thumbnails"
+
+    params = {"fields": fields, "access_token": PAGE_ACCESS_TOKEN}
+
+    # 2️⃣ Fetch data
     try:
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
@@ -234,25 +265,25 @@ def fetch_facebook_post(post_id: str) -> dict:
     except Exception as e:
         raise ValueError(f"Error connecting to Facebook API: {str(e)}")
 
-    raw_caption = (data.get("message") or "").strip()
-    
-    # 1. Identify the best Article Link
-    # Logic: Priority 1: Official attached link -> Priority 2: Links inside attachments -> Priority 3: Pasted links in text
-    
+    # 3️⃣ Extract caption and video_url safely
+    if id_type == "post":
+        raw_caption = (data.get("message") or "").strip()
+        video_url = extract_video_url(data)
+    else:  # video / reel
+        raw_caption = (data.get("description") or "").strip()
+        video_url = data.get("source")
+
+    # 4️⃣ Identify best article link
     found_article_link = None
-    
-    # Check for direct attachment link
     attached_link = data.get("link")
     if attached_link and is_valid_article_link(attached_link):
         found_article_link = attached_link
-    
-    # If not found, check attachments (useful for carousels)
+
     if not found_article_link:
         potential_links = extract_attachment_urls(data)
         if potential_links:
             found_article_link = potential_links[0]
-            
-    # If still not found, search the caption for a pasted URL
+
     if not found_article_link:
         urls_in_text = extract_urls_from_text(raw_caption)
         for u in urls_in_text:
@@ -260,19 +291,18 @@ def fetch_facebook_post(post_id: str) -> dict:
                 found_article_link = u
                 break
 
-    # Final verification and cleanup
-    if not found_article_link:
+    # 5️⃣ Decide comparison type
+    comparison_type = None
+    final_article_link = None
+    if found_article_link:
+        final_article_link = resolve_redirect(found_article_link)
+        comparison_type = "caption_article"
+    elif video_url:
+        comparison_type = "caption_video"
+    else:
         raise ValueError("No valid external article link found in this post.")
-        
-    # Resolve any shortlinks (bit.ly, tinyurl, or fb redirectors)
-    final_article_link = resolve_redirect(found_article_link)
 
-    # 2. Process Caption
-    if not raw_caption:
-        # If there's no text, we just have a link. 
-        # You can decide if you want to allow "empty" captions.
-        pass 
-
+    # 6️⃣ Normalize caption
     caption_en, original_language = normalize_language(raw_caption)
     clean_caption = clean_caption_text(caption_en)
 
@@ -280,4 +310,6 @@ def fetch_facebook_post(post_id: str) -> dict:
         "caption": clean_caption,
         "original_language": original_language,
         "article_link": final_article_link,
+        "video_url": video_url,
+        "comparison_type": comparison_type
     }

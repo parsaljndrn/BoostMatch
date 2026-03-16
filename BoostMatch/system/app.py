@@ -13,40 +13,57 @@ app.secret_key = os.urandom(24)
 def index():
     if request.method == "POST":
         fb_url = request.form.get("fb_url", "").strip()
+        caption = request.form.get("caption", "").strip()
+        link = request.form.get("link", "").strip() or None
 
         # Validation: If URL is invalid, redirect to home (scrolls to top)
-        if not fb_url or not validators.url(fb_url):
+        print("POST received")
+        print("fb_url:", fb_url)
+        print("caption:", caption)
+        print("link:", link)
+
+        # CASE 1: Facebook URL provided
+        if fb_url:
+            if not validators.url(fb_url):
+                return redirect(url_for("index"))
+
+            try:    
+                post_id, id_type = extract_post_id(fb_url)
+                post_data = fetch_facebook_post(fb_url)
+
+                caption = post_data.get("caption")
+                article_link = post_data.get("article_link")
+                headline = extract_article_headline(article_link)
+
+                similarity, prediction = check_misleading(caption, headline)
+
+            except Exception as e:
+                return render_template("index.html", error=str(e))
+
+        # CASE 2: Manual input provided
+        elif caption:
+            try:
+                article_text = extract_article_headline(link) if link else None
+                similarity, prediction = check_misleading(caption, article_text)
+                article_link = link
+                headline = article_text
+            except Exception as e:
+                return render_template("index.html", error=str(e))
+
+        else:
+            # Neither fb_url nor caption provided
             return redirect(url_for("index"))
 
-        try:
-            # 1. Extraction and API Calls
-            post_id = extract_post_id(fb_url)
-            post_data = fetch_facebook_post(post_id)
+        # Store result in session
+        session['result'] = {
+            "prediction": prediction,
+            "similarity": round(similarity * 100, 2) if similarity is not None else None,
+            "caption": caption,
+            "article_link": article_link,
+            "headline": headline
+        }
 
-            caption = post_data.get("caption")
-            article_link = post_data.get("article_link")
-            headline = extract_article_headline(article_link)
-
-            # 2. Matching Logic
-            similarity, prediction = check_misleading(caption, headline)
-
-            # 3. Store result in session
-            session['result'] = {
-                "prediction": prediction,
-                "similarity": round(similarity * 100, 2),
-                "caption": caption,
-                "article_link": article_link,
-                "headline": headline
-            }
-            
-            # 4. PRG Pattern: Redirect to GET to prevent "Form Resubmission" 
-            # and to allow the refresh-to-clear logic.
-            return redirect(url_for("index"))
-
-        except Exception as e:
-            # In case of error, we render directly so the user stays at the 
-            # input form to see the error message.
-            return render_template("index.html", error=str(e))
+        return redirect(url_for("index"))
 
     # GET logic: 
     # session.pop() removes the item after reading it. 

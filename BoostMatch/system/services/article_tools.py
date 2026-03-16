@@ -29,34 +29,29 @@ SOCIAL_DOMAINS = [
 # HEADLINE EXTRACTOR (NEW FUNCTION)
 # =====================================================
 
-def extract_article_headline(url: str) -> str:
+def extract_article_headline(url: str) -> str | None:
     """
     Extracts the headline of an article.
-
-    Ensures the link is a valid article and then retrieves
-    the headline using multiple fallback methods.
+    
+    Returns the headline if extraction succeeds.
+    Returns None if the post does not contain a valid article.
     """
 
     if not url:
-        raise ValueError(
-            "This Facebook post does not contain an article link. "
-            "Please paste a Facebook post with an article attached."
-        )
+        # No article link
+        return None
 
     if _is_social_or_video_link(url):
-        raise ValueError(
-            "The link attached is not an article link. "
-            "Please paste a Facebook post link with an article link attached to it."
-        )
+        # Not an article link
+        return None
 
     try:
         response = requests.get(url, headers=HEADERS, timeout=15)
         response.raise_for_status()
     except requests.exceptions.RequestException:
-        raise ValueError(
-            "Failed to fetch the attached article. "
-            "The website may be unreachable or blocked."
-        )
+        # Could not fetch URL
+        print(f"[Warning] Failed to fetch article: {url}")
+        return None
 
     soup = BeautifulSoup(response.text, "html.parser")
     _clean_dom(soup)
@@ -64,12 +59,11 @@ def extract_article_headline(url: str) -> str:
     headline = _extract_headline(soup)
 
     if not headline:
-        raise ValueError(
-            "Unable to extract the headline from the article."
-        )
+        # Could not extract headline
+        print(f"[Warning] Unable to extract headline from: {url}")
+        return None
 
     return headline
-
 
 # =====================================================
 # ORIGINAL FULL ARTICLE EXTRACTOR (UNCHANGED)

@@ -22,36 +22,48 @@ def check_misleading(caption: str, article_text: str):
     caption = caption or ""
     article_text = article_text or ""
 
-    if not caption.strip() or not article_text.strip():
-        return 0.0, "INSUFFICIENT TEXT"
+    # If caption is empty, can't proceed
+    if not caption.strip():
+        raise ValueError("No caption provided. Please paste an input with a caption.")
 
-    emb1 = sbert_model.encode(caption, convert_to_numpy=True)
-    emb2 = sbert_model.encode(article_text, convert_to_numpy=True)
+    # Compute cosine similarity if article text exists
+    if article_text.strip():
+        emb1 = sbert_model.encode(caption, convert_to_numpy=True)
+        emb2 = sbert_model.encode(article_text, convert_to_numpy=True)
+        cos_sim = float(
+            cosine_similarity(
+                emb1.reshape(1, -1),
+                emb2.reshape(1, -1)
+            )[0][0]
+        )
+    else:
+        cos_sim = None  # No article, so cosine similarity is unavailable
+    
+    if cos_sim is None:
+        raise ValueError(
+            "This Facebook post does not contain an article link. "
+            "Please paste a Facebook post with an article attached."
+        )
 
-    cos_sim = float(
-        cosine_similarity(
-            emb1.reshape(1, -1),
-            emb2.reshape(1, -1)
-        )[0][0]
-    )
-
+    # Extract stylometric features 
     try:
         stylometry = extract_all_features(caption, prefix="caption_")
     except Exception as e:
         print("Stylometry error:", e)
         stylometry = {}
 
-    features = {
-        **stylometry,
-        "cosine_similarity": cos_sim
-    }
+    # Combine features
+    features = {**stylometry}
+    if cos_sim is not None:
+        features["cosine_similarity"] = cos_sim
+    else:
+        features["cosine_similarity"] = 0.0  # default if no article
 
+    # Make sure all features exist
     df = pd.DataFrame([features])
-
     for col in feature_names:
         if col not in df.columns:
             df[col] = 0.0
-
     df = df[feature_names].astype(float)
 
     # Predict class and probability
@@ -64,7 +76,7 @@ def check_misleading(caption: str, article_text: str):
     print("Input features:", df)
 
     # Apply cosine similarity threshold override
-    if cos_sim < cos_sim_cutoff:
+    if cos_sim is not None and cos_sim < cos_sim_cutoff:
         pred = 0  # force MISLEADING
         print(f"Prediction overridden due to low cosine similarity < {cos_sim_cutoff}")
 

@@ -63,11 +63,24 @@
       </div>
 
       <div class="content" id="content2">
-        <label>Manual Input</label>
-        <p class="helper-text">Enter a caption and URL to verify your link.</p>
-        <input type="text" placeholder="Caption / Label" required>
-        <input type="url" placeholder="https://example.com" required>
-        <button class="verify-btn">Verify</button>
+        <form id="manualInputForm" method="POST" action="/">
+          <label for="caption">Manual Input</label>
+          <p class="helper-text">Enter a caption and URL to verify your link.</p>
+          <input 
+            type="text" 
+            id="caption" 
+            name="caption" 
+            placeholder="Caption / Label" 
+            required
+          >
+          <input 
+            type="url" 
+            id="link" 
+            name="link" 
+            placeholder="https://example.com"
+          >
+          <button type="submit" class="verify-btn">Verify</button>
+        </form>
       </div>
     </div>
   </div> 
@@ -88,6 +101,13 @@
   </div>
   {% endif %}
 
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loader-box">
+      <div class="spinner"></div>
+      <p>Analyzing post... Please wait.</p>
+    </div>
+  </div>
+  
   <!-- RESULTS SECTION (Integrated Flask Results) -->
   {% if result %}
   <div class="results-wrapper" id="resultsSection">
@@ -103,7 +123,13 @@
             <h1 id="prediction-text">
                 {{ result.prediction }}
             </h1> 
-            <p> DAPAT HINDI GANTO TOH. EITHER ASA IF ELSE DIN OR WALA. The content aligns with the provided caption. No significant discrepancies found in the analysis.</p>
+            <p>
+              {% if result.prediction == "Misleading" %}
+              BoostMatch detected a possible mismatch between the Facebook caption and the linked article. The semantic similarity score is <strong>{{ result.similarity }}%</strong>, which suggests that the caption may not accurately reflect the content of the source article. Users are advised to review the article before sharing the post.
+              {% else %}
+              BoostMatch found that the Facebook caption and the linked article are generally aligned. The semantic similarity score of <strong>{{ result.similarity }}%</strong> indicates that the caption reflects the meaning of the article content with no major discrepancies detected.
+              {% endif %}
+            </p>
           </div>
           <div class="res-score">
             <h1>{{ result.similarity }}%</h1>
@@ -287,13 +313,18 @@
 
   const tipsUrl = document.getElementById('tips-url');
   const tipsManual = document.getElementById('tips-manual');
-
-  // Show Results
+  
+  const loadingOverlay = document.getElementById("loading-overlay");
   verifyButtons.forEach(button => {
     button.addEventListener('click', () => {
-      resultsWrapper.classList.remove('report-active'); 
-      resultsWrapper.style.display = 'flex'; 
-      resultsWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Hide old results immediately
+    if(resultsWrapper){
+      resultsWrapper.style.display = "none";
+    }
+    // Show loading screen
+    if(loadingOverlay){
+      loadingOverlay.style.display = "flex";
+    }
     });
   });
 
@@ -331,13 +362,19 @@
   });
 
   window.addEventListener("DOMContentLoaded", function () {
-  const resultsWrapper = document.getElementById("resultsSection");
+    const resultsWrapper = document.getElementById("resultsSection");
+    const loadingOverlay = document.getElementById("loading-overlay");
 
-     if (resultsWrapper) {
-        resultsWrapper.style.display = "flex";
-        resultsWrapper.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Hide loader once page loads
+    if(loadingOverlay){
+      loadingOverlay.style.display = "none";
     }
-});
+
+    if (resultsWrapper) {
+      resultsWrapper.style.display = "flex";
+      resultsWrapper.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
 
 </script>
 

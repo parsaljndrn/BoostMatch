@@ -241,6 +241,40 @@ input[type="url"], input[type="text"] { width: 100%; padding: 12px 15px; border-
   transition: width 0.5s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
+.loading-overlay{
+  position: fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background: rgba(255,255,255,0.9);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+}
+
+.loader-box{
+  text-align:center;
+  font-family: Arial, sans-serif;
+}
+
+.spinner{
+  width:50px;
+  height:50px;
+  border:5px solid #e0e0e0;
+  border-top:5px solid #005fa3;
+  border-radius:50%;
+  animation: spin 1s linear infinite;
+  margin:auto;
+  margin-bottom:10px;
+}
+
+@keyframes spin{
+  0%{ transform:rotate(0deg); }
+  100%{ transform:rotate(360deg); }
+}
+
 /* Active State (Split View): Shrink to half sya ihh */
 .results-wrapper.report-active .result-card {
   width: 50%;
