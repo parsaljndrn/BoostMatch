@@ -101,11 +101,7 @@
           <div class="res-text">
             <!-- Dynamic Prediction Text -->
             <h1 id="prediction-text">
-                {% if result.prediction == "MISLEADING" %}
-                    MISLEADING
-                {% else %}
-                    NOT MISLEADING
-                {% endif %}
+                {{ result.prediction }}
             </h1> 
             <p> DAPAT HINDI GANTO TOH. EITHER ASA IF ELSE DIN OR WALA. The content aligns with the provided caption. No significant discrepancies found in the analysis.</p>
           </div>

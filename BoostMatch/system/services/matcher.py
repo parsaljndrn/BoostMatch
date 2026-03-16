@@ -17,6 +17,8 @@ feature_names = boost_model.get_booster().feature_names
 
 def check_misleading(caption: str, article_text: str):
 
+    cos_sim_cutoff = 0.5
+
     caption = caption or ""
     article_text = article_text or ""
 
@@ -34,8 +36,9 @@ def check_misleading(caption: str, article_text: str):
     )
 
     try:
-        stylometry = extract_all_features(caption)
-    except:
+        stylometry = extract_all_features(caption, prefix="caption_")
+    except Exception as e:
+        print("Stylometry error:", e)
         stylometry = {}
 
     features = {
@@ -51,7 +54,21 @@ def check_misleading(caption: str, article_text: str):
 
     df = df[feature_names].astype(float)
 
+    # Predict class and probability
     pred = boost_model.predict(df)[0]
-    prediction = "NOT MISLEADING" if pred == 1 else "NOT"
+    proba = boost_model.predict_proba(df)[0]  # [prob_class0, prob_class1]
+
+    print("Cosine Similarity:", cos_sim)
+    print("Predicted probabilities:", proba)
+    print("Prediction from model (raw):", pred)
+    print("Input features:", df)
+
+    # Apply cosine similarity threshold override
+    if cos_sim < cos_sim_cutoff:
+        pred = 0  # force MISLEADING
+        print(f"Prediction overridden due to low cosine similarity < {cos_sim_cutoff}")
+
+    prediction = "NOT MISLEADING" if pred == 1 else "MISLEADING"
+
 
     return cos_sim, prediction
