@@ -6,18 +6,26 @@ import webbrowser
 from datetime import datetime
 from pathlib import Path
 from threading import Timer
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 import whisper
 import yt_dlp
+import validators
 from dotenv import load_dotenv
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for, session
 from langdetect import detect as lang_detect
+
 from services.fb_graph import extract_post_id, fetch_facebook_post
-from services.article_tools import get_article_content
+from services.article_tools import get_article_content, extract_article_headline
 from services.matcher import check_misleading
+
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)
+
+fb_token = None
 
 try:
     whisper_model = whisper.load_model("small")
@@ -135,16 +143,16 @@ def _preprocess_text(text: str) -> str:
 
 
 LINK_TYPE_NOTES = {
-    "shop":        "The attached link points to a shopping/e-commerce page. No article content to analyze.",
-    "social":      "The attached link points to a social media page. No article content to analyze.",
-    "video":       "The attached link points to a video platform. No article content to analyze.",
-    "unknown":     "The attached link did not return enough readable content to analyze.",
+    "shop": "The attached link points to a shopping/e-commerce page. No article content to analyze.",
+    "social": "The attached link points to a social media page. No article content to analyze.",
+    "video": "The attached link points to a video platform. No article content to analyze.",
+    "unknown": "The attached link did not return enough readable content to analyze.",
     "ad_redirect": "LINK REDIRECTS TO AN AD",
     "not_article": "CANNOT ANALYZE: LINK ATTACHMENT IS NOT AN ARTICLE",
 }
 
 
-def _run_analysis(fb_url: str) -> dict:
+def _run_facebook_analysis(fb_url: str, token: str = None) -> dict:
     if not _is_facebook_url(fb_url):
         raise ValueError("Invalid Link: URL does not appear to be a Facebook link.")
 
@@ -152,15 +160,15 @@ def _run_analysis(fb_url: str) -> dict:
     if not post_id:
         raise ValueError("Could not extract a valid Facebook post ID from the URL.")
 
-    post_data = fetch_facebook_post(post_id, id_type)
+    post_data = fetch_facebook_post(post_id, id_type, access_token=token)
     post_type = _classify_post(fb_url, post_data)
 
     if post_type == "unknown":
         raise ValueError("Cannot detect post type. No caption or link found in this post.")
 
-    caption_raw      = post_data.get("caption", "")
-    article_link     = post_data.get("article_link", "")
-    video_url        = post_data.get("video_url", "")
+    caption_raw = post_data.get("caption", "")
+    article_link = post_data.get("article_link", "")
+    video_url = post_data.get("video_url", "")
     transcription_tl = ""
     transcription_en = ""
 
@@ -262,23 +270,114 @@ def _run_analysis(fb_url: str) -> dict:
     }
 
 
+def _run_manual_analysis(caption: str, link: str = None) -> dict:
+    try:
+        if not caption or not caption.strip():
+            raise ValueError("Please provide a caption.")
+
+        caption_en = _ensure_english(caption.strip())
+        caption_en = _preprocess_text(caption_en)
+
+        if link:
+            if not validators.url(link):
+                raise ValueError("Invalid URL format.")
+
+            article_text = None
+            headline = extract_article_headline(link)
+
+            if headline:
+                article_text = headline
+            else:
+                article_text, link_type = get_article_content(link)
+                if link_type in LINK_TYPE_NOTES:
+                    return {
+                        "post_type": "manual_with_link",
+                        "prediction": "N/A",
+                        "similarity": None,
+                        "caption": caption,
+                        "transcription_tl": "",
+                        "transcription_en": "",
+                        "article_link": link,
+                        "article_text": "",
+                        "has_transcript": False,
+                        "link_type": link_type,
+                        "analysis_note": LINK_TYPE_NOTES[link_type],
+                    }
+
+            article_text = _ensure_english(article_text)
+            article_text_clean = _preprocess_text(article_text)
+            similarity, prediction = check_misleading(caption_en, article_text_clean)
+
+            return {
+                "post_type": "manual_with_link",
+                "prediction": prediction.upper(),
+                "similarity": round(similarity * 100, 1),
+                "caption": caption,
+                "transcription_tl": "",
+                "transcription_en": "",
+                "article_link": link,
+                "article_text": article_text[:6000] + ("…" if len(article_text) > 6000 else ""),
+                "has_transcript": False,
+                "link_type": "article",
+                "analysis_note": "",
+            }
+        else:
+            return {
+                "post_type": "caption_only",
+                "prediction": "N/A",
+                "similarity": None,
+                "caption": caption,
+                "transcription_tl": "",
+                "transcription_en": "",
+                "article_link": "",
+                "article_text": "",
+                "has_transcript": False,
+                "link_type": "none",
+                "analysis_note": "No article link provided. Please add a URL to verify content.",
+            }
+
+    except Exception as e:
+        raise e
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
+    global fb_token
     result = None
     error = None
 
     if request.method == "POST":
+        token_input = request.form.get("fb_token", "").strip()
         fb_url = request.form.get("fb_url", "").strip()
-        if not fb_url:
-            error = "Please paste a Facebook post URL."
-        else:
-            try:
-                result = _run_analysis(fb_url)
-            except Exception as e:
-                now = datetime.now().strftime("%H:%M:%S")
-                error = f"[{now}] {e}"
+        caption = request.form.get("caption", "").strip()
+        link = request.form.get("link", "").strip() or None
 
-    return render_template("index.html", result=result, error=error)
+        if token_input:
+            fb_token = token_input
+            session['fb_token'] = token_input
+
+        try:
+            if fb_url:
+                if not _is_facebook_url(fb_url):
+                    error = "Invalid Link: URL does not appear to be a Facebook link."
+                else:
+                    result = _run_facebook_analysis(fb_url, token=fb_token or session.get('fb_token'))
+            elif caption:
+                result = _run_manual_analysis(caption, link)
+            else:
+                error = "Please provide either a Facebook URL or a caption."
+
+            if result:
+                session['result'] = result
+                return redirect(url_for("index"))
+
+        except Exception as e:
+            now = datetime.now().strftime("%H:%M:%S")
+            error = f"[{now}] {e}"
+
+    fb_token = session.get('fb_token', fb_token)
+    result = session.pop('result', None)
+    return render_template("index.html", result=result, error=error, fb_token=fb_token)
 
 
 def _open_browser():

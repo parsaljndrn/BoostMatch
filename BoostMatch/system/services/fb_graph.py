@@ -9,11 +9,15 @@ load_dotenv()
 GRAPH_VERSION = "v24.0"
 
 
-def get_access_token() -> str:
-    token = os.getenv("FB_PAGE_ACCESS_TOKEN", "").strip()
-    if not token:
-        raise ValueError("FB_PAGE_ACCESS_TOKEN not set in .env file")
-    return token
+def get_access_token(token: str = None) -> str:
+    if token and token.strip():
+        return token.strip()
+    
+    env_token = os.getenv("FB_PAGE_ACCESS_TOKEN", "").strip()
+    if env_token and env_token != "your_facebook_page_access_token_here":
+        return env_token
+    
+    return None
 
 
 def extract_post_id(fb_url: str) -> tuple[str | None, str]:
@@ -22,32 +26,26 @@ def extract_post_id(fb_url: str) -> tuple[str | None, str]:
 
     fb_url = fb_url.strip()
 
-    # /reel/123456 or /reels/123456
     m = re.search(r"/reels?/(\d+)", fb_url)
     if m:
         return m.group(1), "video"
 
-    # /videos/123456
     m = re.search(r"/videos/(\d+)", fb_url)
     if m:
         return m.group(1), "video"
 
-    # /watch/?v=123456
     m = re.search(r"[?&]v=(\d+)", fb_url)
     if m:
         return m.group(1), "video"
 
-    # /posts/123456
     m = re.search(r"/posts/(\d+)", fb_url)
     if m:
         return m.group(1), "post"
 
-    # /photo/123456 or /photo/?fbid=123456
     m = re.search(r"/photo(?:s)?/(\d+)", fb_url)
     if m:
         return m.group(1), "post"
 
-    # /story.php?story_fbid=xxx&id=yyy or permalink.php?story_fbid=xxx&id=yyy
     parsed = urlparse(fb_url)
     if any(x in parsed.path for x in ["permalink.php", "story.php"]):
         qs = parse_qs(parsed.query)
@@ -58,28 +56,22 @@ def extract_post_id(fb_url: str) -> tuple[str | None, str]:
         if story_fbid:
             return story_fbid, "post"
 
-    # ?fbid=xxx
     m = re.search(r"fbid=(\d+)", fb_url)
     if m:
         return m.group(1), "post"
 
-    # /share/p/AbCdEf  or  /share/r/AbCdEf  (new FB short share URLs)
-    # These don't have numeric IDs — need to resolve the redirect first
     m = re.search(r"/share/(?:p|r|v)/([A-Za-z0-9_-]+)", fb_url)
     if m:
         return _resolve_share_url(fb_url)
 
-    # numeric_id_pfbid format: 61587599125854_pfbid0...
     m = re.search(r"(\d{10,})_pfbid", fb_url)
     if m:
         return m.group(1), "post"
 
-    # ?id=123456
     m = re.search(r"[?&]id=(\d+)", fb_url)
     if m:
         return m.group(1), "post"
 
-    # fallback: any 8+ digit number in the URL
     m = re.search(r"(\d{8,})", fb_url)
     if m:
         return m.group(1), "post"
@@ -123,21 +115,27 @@ def _fetch_as_video(video_id: str, access_token: str):
     return resp
 
 
-def fetch_facebook_post(post_id: str, id_type: str = "post") -> dict:
+def fetch_facebook_post(post_id: str, id_type: str = "post", access_token: str = None) -> dict:
     if not post_id:
         raise ValueError("Invalid or missing Facebook post ID")
 
-    access_token = get_access_token()
+    token = get_access_token(access_token)
+    
+    if not token:
+        raise ValueError(
+            "Facebook Page Access Token required. "
+            "Please enter your token in the app to verify Facebook posts."
+        )
 
     try:
         if id_type == "video":
-            resp = _fetch_as_video(post_id, access_token)
+            resp = _fetch_as_video(post_id, token)
         else:
-            resp = _fetch_as_post(post_id, access_token)
+            resp = _fetch_as_post(post_id, token)
 
         if resp.status_code == 400 and id_type == "post":
             print("[fb_graph] Post fetch failed, retrying as video...")
-            resp = _fetch_as_video(post_id, access_token)
+            resp = _fetch_as_video(post_id, token)
             id_type = "video"
 
         resp.raise_for_status()

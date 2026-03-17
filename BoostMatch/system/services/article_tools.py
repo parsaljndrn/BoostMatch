@@ -3,6 +3,15 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    )
+}
+
+MIN_ARTICLE_LENGTH = 50
 
 AD_DOMAINS = [
     "shopee", "lazada", "tokopedia", "amazon", "ebay", "aliexpress",
@@ -64,10 +73,6 @@ def classify_link(url: str) -> str:
 
 
 def _check_redirect(url: str) -> tuple[str, bool]:
-    """
-    Follow redirects and return (final_url, redirected_to_ad).
-    redirected_to_ad is True if the final destination is an ad/shop domain.
-    """
     try:
         resp = requests.head(url, allow_redirects=True, timeout=10,
                              headers={"User-Agent": "Mozilla/5.0"})
@@ -95,6 +100,26 @@ def _clean_soup(soup):
     return soup
 
 
+def _extract_headline(soup):
+    og_title = soup.find("meta", property="og:title")
+    if og_title and og_title.get("content"):
+        return og_title.get("content").strip()
+
+    twitter_title = soup.find("meta", attrs={"name": "twitter:title"})
+    if twitter_title and twitter_title.get("content"):
+        return twitter_title.get("content").strip()
+
+    title_tag = soup.find("title")
+    if title_tag and title_tag.text:
+        return title_tag.text.strip()
+
+    h1_tag = soup.find("h1")
+    if h1_tag and h1_tag.text:
+        return h1_tag.text.strip()
+
+    return None
+
+
 def _extract_paragraphs(soup) -> str:
     clean = []
     for p in soup.find_all("p"):
@@ -116,19 +141,38 @@ def _extract_fallback(soup) -> str:
     return " ".join(chunks)
 
 
-def get_article_content(url: str) -> tuple[str, str]:
-    """
-    Returns (text_content, link_type).
+def extract_article_headline(url: str) -> str:
+    if not url:
+        return None
 
-    link_type values:
-      'article'       - successfully extracted article content
-      'shop'          - e-commerce domain
-      'video'         - video platform
-      'social'        - social media platform
-      'ad_redirect'   - URL redirected to an ad/shop
-      'not_article'   - fetched but not enough readable content
-      'unknown'       - fetch failed
-    """
+    if _is_social_or_video_link(url):
+        return None
+
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=15)
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        print(f"[article_tools] Failed to fetch headline from: {url}")
+        return None
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    _clean_soup(soup)
+
+    headline = _extract_headline(soup)
+
+    if not headline:
+        print(f"[article_tools] Unable to extract headline from: {url}")
+        return None
+
+    return headline
+
+
+def _is_social_or_video_link(url: str):
+    domain = urlparse(url).netloc.lower()
+    return any(d in domain for d in SOCIAL_DOMAINS + VIDEO_DOMAINS)
+
+
+def get_article_content(url: str) -> tuple[str, str]:
     if not url or not url.strip():
         return "", "unknown"
 
@@ -148,16 +192,8 @@ def get_article_content(url: str) -> tuple[str, str]:
         print(f"CANNOT ANALYZE: LINK ATTACHMENT IS NOT AN ARTICLE ({link_type})")
         return "", "not_article"
 
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/124.0.0.0 Safari/537.36"
-        )
-    }
-
     try:
-        response = requests.get(final_url, headers=headers, timeout=12)
+        response = requests.get(final_url, headers=HEADERS, timeout=12)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"[article_tools] Failed to fetch: {e}")
@@ -174,7 +210,7 @@ def get_article_content(url: str) -> tuple[str, str]:
 
     text_content = " ".join(text_content.split())
 
-    if len(text_content.strip()) < 50:
+    if len(text_content.strip()) < MIN_ARTICLE_LENGTH:
         print("CANNOT ANALYZE: LINK ATTACHMENT IS NOT AN ARTICLE")
         return "", "not_article"
 

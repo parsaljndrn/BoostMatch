@@ -1,0 +1,94 @@
+BOOSTMATCH INTEGRATED VERSION SETUP GUIDE
+
+1. DEPENDENCIES INSTALLATION
+   pip install -r requirements.txt
+
+2. SPACY MODEL DOWNLOAD
+   python -m spacy download en_core_web_sm
+
+3. ENVIRONMENT CONFIGURATION
+   - Copy .env.template to .env
+   - Add your FB_PAGE_ACCESS_TOKEN to .env
+
+4. MODEL REQUIREMENTS
+   The application requires pre-trained models in the following directory structure:
+   
+   models/
+   ├── boostmatch/
+   │   └── boostmatch.pkl
+   └── sbert/
+       └── fine_tuned_sbert/
+
+5. DIRECTORY STRUCTURE
+   our project should have:
+   
+   project_root/
+   ├── app.py
+   ├── requirements.txt
+   ├── .env
+   ├── templates/
+   │   └── index.html
+   ├── static/
+   │   ├── style.css
+   │   ├── boostlogoblue.png
+   │   ├── parispic.JPG
+   │   ├── jajapic.png
+   │   ├── ardysonpic.png
+   │   ├── adrianpic.jpg
+   │   └── micopic.png
+   ├── services/
+   │   ├── __init__.py
+   │   ├── app.py
+   │   ├── article_tools.py
+   │   ├── fb_graph.py
+   │   ├── matcher.py
+   │   └── STYLO_EXTRACTING.py
+   └── models/
+       ├── boostmatch/
+       │   └── boostmatch.pkl
+       └── sbert/
+           └── fine_tuned_sbert/
+
+6. RUNNING THE APPLICATION
+   python app.py
+   
+   The app will automatically open at: http://127.0.0.1:5000/
+
+7. FEATURE SUMMARY
+
+   Integrated Features:
+   - Facebook URL analysis with post ID extraction
+   - Manual URL and caption verification
+   - Article headline and content extraction
+   - Audio transcription (Tagalog & English) for videos
+   - Multi-language text translation to English
+   - Misleading content detection using ML models
+   - Semantic similarity analysis (cosine similarity)
+   - Stylometric feature extraction (spaCy, textstat, VADER)
+   - User-friendly web interface with dual verification modes
+   - Results reporting and feedback system
+
+8. KEY IMPORTS INCLUDED
+   - requests: HTTP requests and webpage fetching
+   - beautifulsoup4: HTML parsing and content extraction
+   - flask: Web framework and routing
+   - langdetect: Language detection
+   - deep-translator: Text translation to English
+   - sentence-transformers: Semantic similarity embeddings
+   - scikit-learn & xgboost: ML model inference
+   - spacy: NLP feature extraction
+   - textstat: Readability metrics
+   - vaderSentiment: Sentiment analysis
+   - openai-whisper: Audio transcription
+   - yt-dlp: Video audio extraction
+   - validators: URL validation
+   - numpy & pandas: Data processing
+
+9. REMOVED DUPLICATES
+   - Consolidated two versions of fb_graph.py with best features
+   - Merged article extraction from both versions
+   - Combined matcher logic with enhanced error handling
+   - Unified STYLO_EXTRACTING with all feature extractors
+   - Integrated app routes for both Facebook and manual input
+   - Merged HTML with dual-tab interface
+   - Consolidated CSS styling

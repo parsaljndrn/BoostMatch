@@ -11,7 +11,7 @@ SBERT_PATH = Path("models/sbert/fine_tuned_sbert")
 boost_model = joblib.load(MODEL_PATH)
 sbert_model = SentenceTransformer(str(SBERT_PATH))
 
-feature_names: list[str] = boost_model.get_booster().feature_names
+feature_names = boost_model.get_booster().feature_names
 
 
 def check_misleading(caption: str, article_text: str) -> tuple[float, str]:
@@ -31,7 +31,7 @@ def check_misleading(caption: str, article_text: str) -> tuple[float, str]:
     )
 
     try:
-        stylometry = extract_all_features(caption)
+        stylometry = extract_all_features(caption, prefix="caption_")
     except Exception as e:
         print(f"[matcher] Stylometry extraction failed: {e}")
         stylometry = {}

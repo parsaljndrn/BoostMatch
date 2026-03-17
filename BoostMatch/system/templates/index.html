@@ -1,134 +1,453 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BoostMatch Analyzer</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        .transcript-container {
-            display: flex;
-            gap: 20px;
-            margin: 1.5rem 0;
-            flex-wrap: wrap;
-        }
-        .transcript-wrapper {
-            flex: 1;
-            min-width: 300px;
-        }
-        .scroll-box {
-            max-height: 220px;
-            overflow-y: auto;
-            background: #f8f9fa;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        .empty {
-            color: #888;
-            font-style: italic;
-        }
-        .field + .field { margin-top: 1.2rem; }
-        .badge-orange { background: #fff3cd; color: #856404; border: 1px solid #ffc107; border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; font-weight: 600; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BoostMatch | Verification Tool</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<div class="container">
-    <h1>BoostMatch Analyzer</h1>
-    <p class="subtitle">Facebook Post Misleading Content Detection</p>
+<nav class="navbar">
+  <div class="logo">
+    <a href="#hero">
+      <img src="{{ url_for('static', filename='boostlogoblue.png') }}" alt="BoostMatch Logo">
+    </a>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#hero">Verify</a></li>
+    <li><a href="#quick-tips">Tips</a></li>
+    <li><a href="#about">About</a></li>
+    <li><a href="#info">Info</a></li>
+    <li><a href="#developers">Developers</a></li>
+  </ul>
+</nav>
 
-    <form method="POST" id="mainForm">
-        <input type="url" name="fb_url" placeholder="Paste Facebook post / reel / video link here..." required autocomplete="off">
-        <button type="submit" id="submitBtn">Analyze Post</button>
-    </form>
+<section class="hero" id="hero">
+  
+  <div class="hero-bg"></div>
 
-    {% if error %}
-    <div class="error-message" id="errorBox">{{ error }}</div>
-    {% endif %}
-
-    {% if result %}
-    <div class="result-card" id="resultCard">
-        <div class="status-row">
-            <span class="label">Prediction:</span>
-            <span class="badge {% if result.prediction == 'MISLEADING' %}badge-red{% else %}badge-green{% endif %}">
-                {{ result.prediction }}
-            </span>
-            {% if result.link_type == 'ad_redirect' %}
-            <span class="badge badge-orange" style="margin-left:8px;">⚠ LINK REDIRECTS TO AN AD</span>
-            {% elif result.link_type == 'not_article' %}
-            <span class="badge badge-orange" style="margin-left:8px;">⚠ CANNOT ANALYZE: LINK ATTACHMENT IS NOT AN ARTICLE</span>
-            {% endif %}
-        </div>
-
-        <div class="field">
-            <div class="label">Similarity Score</div>
-            <div class="value">{{ result.similarity }}%</div>
-        </div>
-
-        {% if result.has_transcript %}
-        <div class="transcript-container">
-            <div class="transcript-wrapper">
-                <div class="label">Tagalog Transcription (Whisper)</div>
-                <div class="box scroll-box">{{ result.transcription_tl }}</div>
-            </div>
-            <div class="transcript-wrapper">
-                <div class="label">English Translation (Whisper)</div>
-                <div class="box scroll-box">{{ result.transcription_en }}</div>
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="field">
-            <div class="label">Post Caption</div>
-            <div class="box">{{ result.caption }}</div>
-        </div>
-
-        <div class="field">
-            <div class="label">Article Content (first part)</div>
-            <div class="box scroll-box">
-                {% if result.article_text %}
-                    {{ result.article_text }}
-                {% else %}
-                    <span class="empty">[No article text extracted]</span>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="field">
-            <div class="label">Article Link
-                {% if result.link_type %}
-                <span style="margin-left:8px; font-size:0.75rem; padding:2px 8px; border-radius:4px; font-weight:600;
-                    {% if result.link_type == 'article' %} background:#d4edda; color:#155724;
-                    {% elif result.link_type == 'shop' %} background:#fff3cd; color:#856404;
-                    {% elif result.link_type == 'video' %} background:#cce5ff; color:#004085;
-                    {% elif result.link_type == 'social' %} background:#e2d9f3; color:#4a235a;
-                    {% else %} background:#f8d7da; color:#721c24;
-                    {% endif %}">
-                    {{ result.link_type | upper }}
-                </span>
-                {% endif %}
-            </div>
-            <div class="box">
-                {% if result.article_link %}
-                <a href="{{ result.article_link }}" target="_blank" rel="noopener">{{ result.article_link }}</a>
-                {% else %}
-                <span class="empty">[No link attached]</span>
-                {% endif %}
-            </div>
-        </div>
+  <div id="tokenModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Facebook Access Token Required</h2>
+        <span class="close" onclick="closeTokenModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <p>To verify Facebook posts, you need a Page Access Token:</p>
+        <form id="tokenForm" method="POST" onsubmit="submitToken(event)">
+          <input type="password" id="fb_token" name="fb_token" placeholder="Paste your Facebook Page Access Token" required>
+          <small>Get your token from: <a href="https://developers.facebook.com/tools/explorer" target="_blank">Facebook Graph API Explorer</a></small>
+          <div class="modal-buttons">
+            <button type="button" class="cancel-btn" onclick="closeTokenModal()">Skip</button>
+            <button type="submit" class="submit-btn">Connect Token</button>
+          </div>
+        </form>
+      </div>
     </div>
-    {% endif %}
-</div>
+  </div>
+
+  <div class="hero-box">
+    
+    <input type="radio" name="toggle" id="tab1" checked hidden>
+    <input type="radio" name="toggle" id="tab2" hidden>
+
+    <h2>Match the link to the content.</h2>
+    <p class="subtitle">
+      BoostMatch helps you confirm that a link is real, relevant, and trustworthy.
+    </p>
+
+    <div class="tabs">
+      <label for="tab1" class="tab-btn">URL Verification</label>
+      <label for="tab2" class="tab-btn">Manual Verification</label>
+      <div class="tab-indicator"></div>
+    </div>
+
+    <div class="verify-card">
+      <div class="content" id="content1">
+        <form method="POST">
+          <label>Enter Facebook Post URL</label>
+          <p class="helper-text">Paste the link you want to verify below.</p>
+          <div class="input-row">
+            <input type="text" name="fb_url" placeholder="https://www.facebook.com/..." required>
+            <button type="submit" class="verify-btn">Analyze</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="content" id="content2">
+        <form id="manualInputForm" method="POST" action="/">
+          <label for="caption">Manual Input</label>
+          <p class="helper-text">Enter a caption and URL to verify your link.</p>
+          <input 
+            type="text" 
+            id="caption" 
+            name="caption" 
+            placeholder="Caption / Label" 
+            required
+          >
+          <input 
+            type="url" 
+            id="link" 
+            name="link" 
+            placeholder="https://example.com"
+          >
+          <button type="submit" class="verify-btn">Verify</button>
+        </form>
+      </div>
+    </div>
+  </div> 
+
+  {% if error %}
+  <div class="results-wrapper" style="display: flex; justify-content: center; animation: none;">
+    <div class="result-card" style="background: #ffebee; color: #c62828; border: 1px solid #c62828;">
+      <div class="result-content">
+        <div class="res-label" style="color: #c62828;">ERROR</div>
+        <div class="res-body-main">
+          <div class="res-text">
+            <h1 style="color: #c62828;">{{ error }}</h1> 
+            {% if "Page Access Token" in error or "token" in error.lower() %}
+            <button onclick="openTokenModal()" style="margin-top: 15px; background: #005fa3; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+              Enter Token Now
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loader-box">
+      <div class="spinner"></div>
+      <p>Analyzing post... Please wait.</p>
+    </div>
+  </div>
+  
+  {% if result %}
+  <div class="results-wrapper" id="resultsSection">
+    
+    <div class="result-card">
+      <div class="result-content">
+        <div class="res-label">ANALYSIS RESULT</div>
+        
+        <div class="res-body-main">
+          <div class="res-text">
+            <h1 id="prediction-text">
+                {{ result.prediction }}
+            </h1> 
+            {% if result.analysis_note %}
+            <p style="color: #d32f2f; font-weight: 600; background: #ffebee; padding: 10px; border-radius: 6px; margin: 10px 0;">
+              ⚠️ {{ result.analysis_note }}
+            </p>
+            {% else %}
+            <p>
+              {% if result.prediction == "MISLEADING" %}
+              BoostMatch detected a possible mismatch between the caption and the linked content. The semantic similarity score is <strong>{{ result.similarity }}%</strong>, which suggests that the caption may not accurately reflect the content. Users are advised to review the article before sharing.
+              {% else %}
+              BoostMatch found that the caption and the linked content are generally aligned. The semantic similarity score of <strong>{{ result.similarity }}%</strong> indicates alignment with no major discrepancies detected.
+              {% endif %}
+            </p>
+            {% endif %}
+          </div>
+          <div class="res-score">
+            <h1>{{ result.similarity if result.similarity else "N/A" }}{% if result.similarity %}%{% endif %}</h1>
+          </div>
+        </div>
+    
+        <div class="res-columns">
+          <div class="res-col">
+            <h6>CAPTION</h6>
+            <p class="res-placeholder">{{ result.caption }}</p>
+          </div>
+          <div class="res-col">
+            <h6><label class="form-label">Source Link</label></h6>
+            {% if result.link_type and result.link_type != "article" %}
+            <span style="display: inline-block; background: #fff3cd; color: #856404; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-bottom: 10px;">
+              {{ result.link_type | upper }}
+            </span>
+            {% endif %}
+            <p class="res-placeholder">
+                {% if result.article_link %}
+                <a href="{{ result.article_link }}" target="_blank" class="form-input" style="text-decoration: none; color: #005fa3; font-weight: bold;">
+                {{ result.article_link }}</a>
+                {% else %}
+                <span class="empty">[No article link]</span>
+                {% endif %}
+                {% if result.has_transcript %}
+                <label class="form-label">Transcription</label>
+                <textarea class="form-input" rows="8" readonly style="resize: none; background: #f2f6f9;">{{ result.transcription_en }}</textarea>
+                {% endif %}
+                {% if result.article_text %}
+                <label class="form-label">Article Content</label>
+                <textarea class="form-input" rows="10" readonly style="resize: none; background: #f2f6f9;">{{ result.article_text }}</textarea>
+                {% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+    
+      <div class="result-footer">
+        <span>View Article Evidence</span>
+        <button class="report-btn" id="openReport">Report</button>
+      </div>
+    </div>
+
+    <div class="report-card">
+      <div class="report-inner">
+        <div class="report-header">
+          <h3>Report Issue</h3>
+        </div>
+        
+        <form class="report-form" action="/report" method="POST">
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="issue_type" value="misleading" required> <span>Inaccurate/misleading</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="issue_type" value="mismatch"> <span>Caption-link mismatch</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="issue_type" value="source"> <span>Unreliable source</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="issue_type" value="other"> <span>Other</span>
+            </label>
+          </div>
+
+          <label class="form-label">Feedback</label>
+          <textarea class="form-input" name="feedback" rows="3" placeholder="Tell us more..."></textarea>
+          
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" name="email" placeholder="name@example.com">
+
+          <div class="form-actions">
+            <button type="button" class="cancel-btn" id="closeReport">Cancel</button>
+            <button type="submit" class="submit-btn">Submit Report</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div> 
+  {% endif %}
+</section>
+
+<section class="quick-tips" id="quick-tips">
+  <h3>Quick Tips</h3>
+  
+  <div class="tips" id="tips-url">
+    <div class="tip">Make sure to include the protocol (http:// or https://)</div>
+    <div class="tip">URLs should not contain spaces or special characters</div>
+    <div class="tip">Valid example: https://www.facebook.com/...</div>
+  </div>
+
+  <div class="tips" id="tips-manual" style="display: none;">
+    <div class="tip">Add a caption or label of your link</div>
+    <div class="tip">URLs must include the protocol (http:// or https://)</div>
+    <div class="tip">Valid example: https://example.com</div>
+  </div>
+  
+</section>
+
+<section class="about" id="about">
+  <div class="about-content">
+    <div class="about-text">
+      <h3>ABOUT BOOSTMATCH</h3>
+      <p>
+       BoostMatch is a web-based verification tool designed to help users identify misleading social media posts, particularly those containing captions and external links. With the growing volume of information shared online, users are often exposed to posts where the caption does not accurately represent the linked content. BoostMatch addresses this issue by analyzing the relationship between a post's caption and its attached link to determine whether they are aligned or potentially misleading. The system is intended to support critical information consumption by providing an accessible and easy-to-use verification platform for everyday social media users.      </p>
+    </div>
+    <div class="about-logo">
+        <img src="{{ url_for('static', filename='boostlogoblue.png') }}" alt="BoostMatch Logo" class="side-logo">
+    </div>
+  </div>
+</section>
+
+<section class="info" id="info">
+  <div class="card">
+    <h4>How does it Work?</h4>
+    <p>BoostMatch examines a social media post by analyzing the relationship between the caption and the linked content.</p>
+  </div>
+  <div class="card">
+    <h4>How we Verify?</h4>
+    <p>The system applies semantic analysis to understand meaning and stylometric analysis to examine writing style.</p>
+  </div>
+  <div class="card">
+    <h4>Why this Matters?</h4>
+    <p>Misleading social media posts can spread rapidly. BoostMatch supports users in verifying information before sharing.</p>
+  </div>
+</section>
+
+<section class="developers" id="developers">
+  <h3>DEVELOPERS</h3>
+  <div class="devs">
+    
+    <div class="dev-card">
+      <div class="avatar">
+        <img src="{{ url_for('static', filename='parispic.JPG') }}" alt="Dev 1">
+      </div>
+      <div class="dev-info">
+        <span class="dev-name">Paris Alejandrino</span>
+        <span class="dev-role">ROLE</span>
+      </div>
+    </div>
+
+    <div class="dev-card">
+      <div class="avatar">
+        <img src="{{ url_for('static', filename='jajapic.png') }}" alt="Dev 2">
+      </div>
+      <div class="dev-info">
+        <span class="dev-name">Janessa Manuel</span>
+        <span class="dev-role">ROLE</span>
+      </div>
+    </div>
+
+    <div class="dev-card">
+      <div class="avatar">
+        <img src="{{ url_for('static', filename='ardysonpic.png') }}" alt="Dev 3">
+      </div>
+      <div class="dev-info">
+        <span class="dev-name">Ardyson Marcelo</span>
+        <span class="dev-role">ROLE</span>
+      </div>
+    </div>
+
+    <div class="dev-card">
+      <div class="avatar">
+        <img src="{{ url_for('static', filename='adrianpic.jpg') }}" alt="Dev 4">
+      </div>
+      <div class="dev-info">
+        <span class="dev-name">Adrian Libarios</span>
+        <span class="dev-role">ROLE</span>
+      </div>
+    </div>
+
+    <div class="dev-card">
+      <div class="avatar">
+        <img src="{{ url_for('static', filename='micopic.png') }}" alt="Dev 5">
+      </div>
+      <div class="dev-info">
+        <span class="dev-name">Mico Mempin</span>
+        <span class="dev-role">ROLE</span>
+      </div>
+    </div>
+
+  </div>
+</section>
 
 <script>
-    document.getElementById('mainForm').onsubmit = function() {
-        const btn = document.getElementById('submitBtn');
-        btn.innerText = "Analyzing... (may take 10–40 seconds)";
-        btn.disabled = true;
-    };
+  const verifyButtons = document.querySelectorAll('.verify-btn');
+  const resultsWrapper = document.getElementById('resultsSection');
+  const openReportBtn = document.getElementById('openReport');
+  const closeReportBtn = document.getElementById('closeReport');
+  const tab1 = document.getElementById('tab1');
+  const tab2 = document.getElementById('tab2');
+
+  const tipsUrl = document.getElementById('tips-url');
+  const tipsManual = document.getElementById('tips-manual');
+  
+  const loadingOverlay = document.getElementById("loading-overlay");
+  const tokenModal = document.getElementById("tokenModal");
+
+  function openTokenModal() {
+    tokenModal.style.display = "flex";
+  }
+
+  function closeTokenModal() {
+    tokenModal.style.display = "none";
+  }
+
+  function submitToken(event) {
+    event.preventDefault();
+    const tokenForm = document.getElementById('tokenForm');
+    tokenForm.submit();
+  }
+
+  function showTokenModalIfNeeded() {
+    const tokenStored = session.get('fb_token');
+    if (!tokenStored && window.location.pathname === '/') {
+      openTokenModal();
+    }
+  }
+
+  verifyButtons.forEach(button => {
+    button.addEventListener('click', () => {
+    if(resultsWrapper){
+      resultsWrapper.style.display = "none";
+    }
+    if(loadingOverlay){
+      loadingOverlay.style.display = "flex";
+    }
+    });
+  });
+
+  if (openReportBtn) {
+  openReportBtn.addEventListener('click', () => {
+    resultsWrapper.classList.add('report-active');
+  });
+    }
+
+  closeReportBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    resultsWrapper.classList.remove('report-active');
+  });
+
+  function resetAll() {
+    resultsWrapper.style.display = 'none';
+    resultsWrapper.classList.remove('report-active');
+  }
+
+  tab1.addEventListener('change', () => {
+    resetAll();
+    tipsUrl.style.display = 'flex';     
+    tipsManual.style.display = 'none';  
+  });
+
+  tab2.addEventListener('change', () => {
+    resetAll();
+    tipsUrl.style.display = 'none';     
+    tipsManual.style.display = 'flex';  
+  });
+
+  window.addEventListener("DOMContentLoaded", function () {
+    const resultsWrapper = document.getElementById("resultsSection");
+    const loadingOverlay = document.getElementById("loading-overlay");
+
+    if(loadingOverlay){
+      loadingOverlay.style.display = "none";
+    }
+
+    if (resultsWrapper) {
+      resultsWrapper.style.display = "flex";
+      resultsWrapper.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    showTokenModalIfNeeded();
+  });
+
+  window.addEventListener('click', function(event) {
+    if (event.target == tokenModal) {
+      closeTokenModal();
+    }
+  });
+
 </script>
+
+<svg style="width:0; height:0; position:absolute;" aria-hidden="true" focusable="false">
+  <filter id="solid-outline">
+    <feMorphology in="SourceAlpha" result="expanded" operator="dilate" radius="0.5"></feMorphology>
+    <feFlood flood-color="white" result="color"></feFlood>
+    <feComposite in="color" in2="expanded" operator="in" result="outline"></feComposite>
+    <feMerge>
+      <feMergeNode in="outline"></feMergeNode>
+      <feMergeNode in="SourceGraphic"></feMergeNode>
+    </feMerge>
+  </filter>
+</svg>
+
 </body>
 </html>
