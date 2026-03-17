@@ -292,15 +292,19 @@ def fetch_facebook_post(fb_url: str) -> dict:
                 break
 
     # 5️⃣ Decide comparison type
+    caption_en, original_language = normalize_language(raw_caption)
+    clean_caption = clean_caption_text(caption_en)
+    
+    final_article_link = resolve_redirect(found_article_link) if found_article_link else None
     comparison_type = None
-    final_article_link = None
-    if found_article_link:
-        final_article_link = resolve_redirect(found_article_link)
+    if final_article_link and caption_en.strip():
         comparison_type = "caption_article"
-    elif video_url:
+    elif video_url and caption_en.strip():
         comparison_type = "caption_video"
-    else:
-        raise ValueError("No valid external article link found in this post.")
+    elif video_url and not caption_en.strip() and final_article_link:
+        comparison_type = "video_article"
+    elif video_url and not caption_en.strip() and not final_article_link:
+        comparison_type = "video_only"
 
     # 6️⃣ Normalize caption
     caption_en, original_language = normalize_language(raw_caption)

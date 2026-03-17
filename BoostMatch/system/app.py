@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from services.fb_graph import extract_post_id, fetch_facebook_post
 from services.article_tools import extract_article_headline
 from services.matcher import check_misleading
+from services.analysis_service import classify_post
 import validators
 import os
 
@@ -28,14 +29,24 @@ def index():
                 return redirect(url_for("index"))
 
             try:    
-                post_id, id_type = extract_post_id(fb_url)
                 post_data = fetch_facebook_post(fb_url)
 
-                caption = post_data.get("caption")
-                article_link = post_data.get("article_link")
-                headline = extract_article_headline(article_link)
+                result = classify_post(
+                    caption=post_data.get("caption"),
+                    article_link=post_data.get("article_link"),
+                    video_url=post_data.get("video_url")
+                )
 
-                similarity, prediction = check_misleading(caption, headline)
+                # Then store in session
+                session['result'] = {
+                    "prediction": result['prediction'],
+                    "similarity": round(result['cosine_similarity'] * 100, 2) if result['cosine_similarity'] else None,
+                    "caption": result['caption_used'],
+                    "article_link": post_data.get("article_link"),  # original URL
+                    "article_text": result['article_used']        # full article or video transcript
+                }
+
+                return redirect(url_for("index"))
 
             except Exception as e:
                 return render_template("index.html", error=str(e))
@@ -43,27 +54,30 @@ def index():
         # CASE 2: Manual input provided
         elif caption:
             try:
-                article_text = extract_article_headline(link) if link else None
-                similarity, prediction = check_misleading(caption, article_text)
-                article_link = link
-                headline = article_text
+                # Use analysis_service to handle missing article or video automatically
+                result = classify_post(
+                    caption=caption,
+                    article_link=link or None,
+                    video_url=None  # manual input has no video
+                )
+
+                # Then store in session
+                session['result'] = {
+                    "prediction": result['prediction'],
+                    "similarity": round(result['cosine_similarity'] * 100, 2) if result['cosine_similarity'] else None,
+                    "caption": result['caption_used'],
+                    "article_link": link or None,
+                    "article_text": result['article_used']
+                }
+
+                return redirect(url_for("index"))
+
             except Exception as e:
                 return render_template("index.html", error=str(e))
 
         else:
             # Neither fb_url nor caption provided
             return redirect(url_for("index"))
-
-        # Store result in session
-        session['result'] = {
-            "prediction": prediction,
-            "similarity": round(similarity * 100, 2) if similarity is not None else None,
-            "caption": caption,
-            "article_link": article_link,
-            "headline": headline
-        }
-
-        return redirect(url_for("index"))
 
     # GET logic: 
     # session.pop() removes the item after reading it. 
