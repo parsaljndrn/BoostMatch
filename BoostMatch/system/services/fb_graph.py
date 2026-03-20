@@ -5,6 +5,7 @@ from urllib.parse import urlparse, parse_qs
 from langdetect import detect
 from deep_translator import GoogleTranslator
 from dotenv import load_dotenv
+import emoji
 
 load_dotenv()
 
@@ -131,19 +132,7 @@ def clean_caption_text(text: str) -> str:
         return text
 
     # Remove emojis
-    emoji_pattern = re.compile(
-        "[" 
-        "\U0001F600-\U0001F64F"
-        "\U0001F300-\U0001F5FF"
-        "\U0001F680-\U0001F6FF"
-        "\U0001F1E0-\U0001F1FF"
-        "\U00002700-\U000027BF"
-        "\U0001F900-\U0001F9FF"
-        "\U00002600-\U000026FF"
-        "]+",
-        flags=re.UNICODE
-    )
-    text = emoji_pattern.sub('', text)
+    text = emoji.replace_emoji(text, replace='')
 
     # Remove hashtags
     text = re.sub(r'#\w+', '', text)
@@ -158,6 +147,10 @@ def clean_caption_text(text: str) -> str:
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
+def is_meaningful_text(text: str) -> bool:
+    import re
+    words = re.findall(r'\b[A-Za-z]{3,}\b', text)
+    return len(words) >= 2
 # =========================================================
 # LANGUAGE DETECTION + TRANSLATION
 # =========================================================

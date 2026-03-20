@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from services.fb_graph import extract_post_id, fetch_facebook_post
 from services.article_tools import extract_article_headline
 from services.matcher import check_misleading
-from services.analysis_service import classify_post
+from services.analysis_service import classify_post, is_facebook_url
 import validators
 import os
 
@@ -23,12 +23,16 @@ def index():
         print("caption:", caption)
         print("link:", link)
 
-        # CASE 1: Facebook URL provided
-        if fb_url:
-            if not validators.url(fb_url):
-                return redirect(url_for("index"))
+        try:
+            # ✅ Only validate if fb_url is provided
+            if fb_url and not is_facebook_url(fb_url):
+                raise ValueError("Invalid URL. Please paste a valid Facebook post link.")
 
-            try:    
+            # CASE 1: Facebook URL provided
+            if fb_url:
+                if not validators.url(fb_url):
+                    raise ValueError("Invalid URL format.")
+
                 post_data = fetch_facebook_post(fb_url)
 
                 result = classify_post(
@@ -37,31 +41,25 @@ def index():
                     video_url=post_data.get("video_url")
                 )
 
-                # Then store in session
                 session['result'] = {
                     "prediction": result['prediction'],
                     "similarity": round(result['cosine_similarity'] * 100, 2) if result['cosine_similarity'] else None,
                     "caption": result['caption_used'],
-                    "article_link": post_data.get("article_link"),  # original URL
-                    "article_text": result['article_used']        # full article or video transcript
+                    "article_link": post_data.get("article_link"),
+                    "article_text": result['article_used']
                 }
 
                 return redirect(url_for("index"))
 
-            except Exception as e:
-                return render_template("index.html", error=str(e))
-
-        # CASE 2: Manual input provided
-        elif caption:
-            try:
+            # CASE 2: Manual input
+            elif caption:
                 # Use analysis_service to handle missing article or video automatically
                 result = classify_post(
                     caption=caption,
                     article_link=link or None,
-                    video_url=None  # manual input has no video
+                    video_url=None
                 )
 
-                # Then store in session
                 session['result'] = {
                     "prediction": result['prediction'],
                     "similarity": round(result['cosine_similarity'] * 100, 2) if result['cosine_similarity'] else None,
@@ -72,18 +70,17 @@ def index():
 
                 return redirect(url_for("index"))
 
-            except Exception as e:
-                return render_template("index.html", error=str(e))
+            else:
+                return redirect(url_for("index"))
 
-        else:
-            # Neither fb_url nor caption provided
-            return redirect(url_for("index"))
+        # ✅ ONE centralized error handler
+        except Exception as e:
+            return render_template("index.html", result=None, error=str(e))
 
     # GET logic: 
     # session.pop() removes the item after reading it. 
     # If the user hits 'Refresh', session.get('result') will be None.
     result = session.pop('result', None)
-    
     # If no result exists (like after a refresh), the HTML won't render the 
     # result-card, and the browser will naturally stay at the top.
     return render_template("index.html", result=result)

@@ -7,11 +7,22 @@ import joblib
 import pandas as pd
 from .matcher import check_misleading as matcher_check_misleading
 from .article_tools import extract_article_for_nlp
-from .fb_graph import normalize_language
+from .fb_graph import normalize_language, is_meaningful_text, clean_caption_text
 from services.article_tools import extract_article_headline
 from urllib.parse import urlparse
 import tempfile
 import requests
+
+
+def is_facebook_url(url: str) -> bool:
+    if not url:
+        return False
+
+    return any(domain in url for domain in [
+        "facebook.com",
+        "fb.watch",
+        "m.facebook.com"
+    ])
 
 # -----------------------------
 # WhisperAI setup (using openai.whisper locally)
@@ -61,7 +72,7 @@ def transcribe_video(video_url: str) -> str:
             raise ValueError("This Facebook video contains no audio and cannot be transcribed.")
 
         # ---- Transcribe ----
-        model = whisper.load_model("small")
+        model = whisper.load_model("small").to("cuda")
         result = model.transcribe(tmp_path)
 
         return result.get("text", "")
@@ -142,17 +153,32 @@ def classify_post(caption: str = "", article_link: str = None, video_url: str = 
     High-level function to classify a Facebook post.
     Returns a dict with prediction, cosine similarity, and text used.
     """
- 
-    # Normalize language: translate if not English
-    caption_to_use, lang_detected = normalize_language(caption)
-    # caption_to_use is always defined, translation happens if needed
+    MAX_TRANSLATE_CHARS = 6000
 
-    # Prepare article/video text
+    # ✅ Step 1: Clean caption FIRST
+    caption = clean_caption_text(caption)
+
+    # ✅ Step 2: Validate meaningful text
+    if not is_meaningful_text(caption):
+        raise ValueError(
+            "Cannot analyze post: no caption provided. "
+            "Please paste a Facebook post with a caption.")
+
+    # ✅ Step 3: Normalize language (translation if needed)
+    caption_to_use, lang_detected = normalize_language(caption)
+
+    if len(caption_to_use) > MAX_TRANSLATE_CHARS:
+        raise ValueError(
+            f"Cannot analyze post: caption too long ({len(caption_to_use)} chars). "
+            f"Please try a post with shorten the caption and try again."
+        )
+
+    # ✅ Step 4: Prepare article/video text
     caption_to_use, article_to_use = prepare_post_for_analysis(
         caption_to_use, article_link, video_url
     )
 
-    # Run BoostMatch prediction
+    # ✅ Step 5: Run BoostMatch prediction
     cos_sim, prediction = matcher_check_misleading(caption_to_use, article_to_use)
 
     return {
