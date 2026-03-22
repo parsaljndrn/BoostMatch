@@ -28,61 +28,60 @@ def is_facebook_url(url: str) -> bool:
 # WhisperAI setup (using openai.whisper locally)
 # -----------------------------
 try:
-    import whisper
+    from faster_whisper import WhisperModel
+    whisper_model = WhisperModel("small", device="cpu")
 except ImportError:
-    whisper = None
-    print("[Warning] Whisper not installed. Video transcription will not work.")
+    whisper_model = None
+    print("[Warning] Faster-Whisper not installed.")
 
 
 # -----------------------------
 # Video transcription helper
 # -----------------------------
 def transcribe_video(video_url: str) -> str:
-    """
-    Transcribe a video URL using Whisper (Windows-safe version).
-    """
     if not video_url:
         return ""
 
-    if whisper is None:
-        raise ValueError("Whisper not installed. Cannot transcribe video.")
+    if whisper_model is None:
+        raise ValueError("Faster-Whisper not installed.")
 
-    # Step 1: create temp file path WITHOUT opening it
-    fd, tmp_path = tempfile.mkstemp(suffix=".mp4")
-    os.close(fd)  # close immediately so Whisper/FFmpeg can open it
+    fd, video_path = tempfile.mkstemp(suffix=".mp4")
+    os.close(fd)
+
+    audio_path = video_path.replace(".mp4", ".mp3")
 
     try:
         # Download video
         r = requests.get(video_url, stream=True, timeout=30)
         r.raise_for_status()
 
-        with open(tmp_path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
+        with open(video_path, "wb") as f:
+            for chunk in r.iter_content(8192):
                 if chunk:
                     f.write(chunk)
 
-        # ---- Check if video has audio ----
-        check_audio = subprocess.run(
-            ["ffprobe", "-i", tmp_path, "-show_streams", "-select_streams", "a", "-loglevel", "error"],
-            capture_output=True,
-            text=True
+        # Extract audio
+        subprocess.run(
+            ["ffmpeg", "-i", video_path, "-vn", "-acodec", "mp3", audio_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
         )
 
-        if check_audio.stdout.strip() == "":
-            raise ValueError("This Facebook video contains no audio and cannot be transcribed.")
+        # ✅ Correct Faster-Whisper usage
+        segments, _ = whisper_model.transcribe(audio_path, task="translate")
 
-        # ---- Transcribe ----
-        model = whisper.load_model("small").to("cuda")
-        result = model.transcribe(tmp_path)
+        video_text = " ".join([seg.text for seg in segments]).strip()
 
-        return result.get("text", "")
+        if not video_text:
+            raise ValueError("Transcription failed or empty.")
+
+        return video_text
 
     finally:
-        # Step 4: clean up temp file
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-
-
+        if os.path.exists(video_path):
+            os.remove(video_path)
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
 # -----------------------------
 # Prepare caption/article for analysis
 # -----------------------------
