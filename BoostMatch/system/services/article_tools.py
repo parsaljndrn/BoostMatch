@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from urllib.parse import urlparse
+from deep_translator import GoogleTranslator
+from langdetect import detect
 
 HEADERS = {
     "User-Agent": (
@@ -24,6 +26,39 @@ SOCIAL_DOMAINS = [
     "fb.watch"
 ]
 
+# =====================================================
+# TRANSLATION HELPER
+# =====================================================
+
+def _translate_to_english(text: str) -> str:
+    """
+    Detects language and translates to English ONLY if needed.
+    Handles large text safely using chunking.
+    """
+    if not text:
+        return text
+
+    try:
+        lang = detect(text)
+
+        # Skip translation if already English
+        if lang == "en":
+            return text
+
+        translator = GoogleTranslator(source='auto', target='en')
+
+        # Handle long text (Google limit ~5000 chars)
+        if len(text) > 4500:
+            chunks = [text[i:i+4500] for i in range(0, len(text), 4500)]
+            translated_chunks = [translator.translate(chunk) for chunk in chunks]
+            return " ".join(translated_chunks)
+
+        return translator.translate(text)
+
+    except Exception as e:
+        print(f"[Warning] Translation failed: {e}")
+        return text
+    
 
 # =====================================================
 # HEADLINE EXTRACTOR (NEW FUNCTION)
@@ -62,6 +97,9 @@ def extract_article_headline(url: str) -> str | None:
         # Could not extract headline
         print(f"[Warning] Unable to extract headline from: {url}")
         return None
+    
+    # Optional: translate headline
+    headline = _translate_to_english(headline)
 
     return headline
 
@@ -106,6 +144,9 @@ def extract_article_for_nlp(url: str) -> str:
             "The link attached is not an article link. "
             "Please paste a Facebook post link with an article link attached to it."
         )
+
+    # ✅ NEW STEP: TRANSLATION (AFTER EXTRACTION, BEFORE MODEL)
+    article_text = _translate_to_english(article_text)
 
     return article_text
 
