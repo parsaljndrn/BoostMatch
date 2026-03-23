@@ -120,8 +120,8 @@ def prepare_post_for_analysis(
     # Case 3: video + article link (no caption)
     if video_url and article_link and not caption:
         video_text = transcribe_video(video_url)
-        article_text = extract_article_for_nlp(article_link)
-        return video_text, article_text
+        article_text = extract_article_headline(article_link)
+        return  video_text, article_text
 
     # Case 4: video only (no caption, no link)
     if video_url and not caption and not article_link:
@@ -138,7 +138,7 @@ def prepare_post_for_analysis(
     if article_link and not caption:
         raise ValueError(
             "Cannot analyze post: no caption provided. "
-            "Please paste a Facebook post with a caption."
+            "Please paste a Facebook post with a caption"
         )
 
     # Any other case
@@ -157,11 +157,11 @@ def classify_post(caption: str = "", article_link: str = None, video_url: str = 
     # ✅ Step 1: Clean caption FIRST
     caption = clean_caption_text(caption)
 
-    # ✅ Step 2: Validate meaningful text
+    """# ✅ Step 2: Validate meaningful text
     if not is_meaningful_text(caption):
         raise ValueError(
             "Cannot analyze post: no caption provided. "
-            "Please paste a Facebook post with a caption.")
+            "Please paste a Facebook post with a caption.6000")"""
 
     # ✅ Step 3: Normalize language (translation if needed)
     caption_to_use, lang_detected = normalize_language(caption)
