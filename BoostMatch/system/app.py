@@ -5,10 +5,24 @@ from services.matcher import check_misleading
 from services.analysis_service import classify_post, is_facebook_url
 import validators
 import os
+import re
 
 app = Flask(__name__)
 # The secret key is essential to make session.pop() work correctly
 app.secret_key = os.urandom(24) 
+
+def is_facebook_post_url(url: str) -> bool:
+    if not url:
+        return False
+
+    return any(x in url for x in [
+        "/posts/",
+        "/videos/",
+        "fb.watch",
+        "permalink.php",
+        "/reel/",
+        "/share/" 
+    ])
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -16,6 +30,13 @@ def index():
         fb_url = request.form.get("fb_url", "").strip()
         caption = request.form.get("caption", "").strip()
         link = request.form.get("link", "").strip() or None
+        # Manual input validation: empty or link-only
+        if not caption and not fb_url:
+            return render_template("index.html", result=None, error="Cannot analyze input: caption is empty. Please enter a caption.")
+
+        url_pattern = r"^(https?://)?(www\.)?[-\w]+(\.\w{2,})+(/[\w\-./?%&=]*)?$"
+        if caption and re.fullmatch(url_pattern, caption):
+            return render_template("index.html", result=None, error="Cannot analyze input: caption appears to be only a link. Please enter actual text.")
 
         # Validation: If URL is invalid, redirect to home (scrolls to top)
         print("POST received")
@@ -24,17 +45,18 @@ def index():
         print("link:", link)
 
         try:
-            # ✅ Only validate if fb_url is provided
-            if fb_url and not is_facebook_url(fb_url):
-                raise ValueError("Invalid URL. Please paste a valid Facebook post link.")
-
-            # CASE 1: Facebook URL provided
+            # -------------------------------
+            # CASE 1: Facebook input selected
+            # -------------------------------
             if fb_url:
+                # Validate FB URL
+                if not is_facebook_url(fb_url):
+                    raise ValueError("Invalid URL. Please paste a valid Facebook post link.")
                 if not validators.url(fb_url):
                     raise ValueError("Invalid URL format.")
 
+                # Fetch and classify FB post
                 post_data = fetch_facebook_post(fb_url)
-
                 result = classify_post(
                     caption=post_data.get("caption"),
                     article_link=post_data.get("article_link"),
@@ -48,12 +70,19 @@ def index():
                     "article_link": post_data.get("article_link"),
                     "article_text": result['article_used']
                 }
-
                 return redirect(url_for("index"))
 
-            # CASE 2: Manual input
+            # -------------------------------
+            # CASE 2: Manual input selected
+            # -------------------------------
             elif caption:
-                # Use analysis_service to handle missing article or video automatically
+                # Manual input validation
+                url_pattern = r"^(https?://)?(www\.)?[-\w]+(\.\w{2,})+(/[\w\-./?%&=]*)?$"
+                if not caption:
+                    raise ValueError("Cannot analyze input: caption is empty. Please enter a caption.")
+                if re.fullmatch(url_pattern, caption):
+                    raise ValueError("Cannot analyze input: caption appears to be only a link. Please enter actual text.")
+
                 result = classify_post(
                     caption=caption,
                     article_link=link or None,
@@ -67,22 +96,19 @@ def index():
                     "article_link": link or None,
                     "article_text": result['article_used']
                 }
-
                 return redirect(url_for("index"))
 
+            # -------------------------------
+            # CASE 3: Neither FB nor manual input provided
+            # -------------------------------
             else:
-                return redirect(url_for("index"))
+                raise ValueError("Please provide either a Facebook URL or a caption for manual input.")
 
         # ✅ ONE centralized error handler
         except Exception as e:
             return render_template("index.html", result=None, error=str(e))
 
-    # GET logic: 
-    # session.pop() removes the item after reading it. 
-    # If the user hits 'Refresh', session.get('result') will be None.
     result = session.pop('result', None)
-    # If no result exists (like after a refresh), the HTML won't render the 
-    # result-card, and the browser will naturally stay at the top.
     return render_template("index.html", result=result)
 
 if __name__ == "__main__":

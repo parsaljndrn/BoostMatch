@@ -41,8 +41,7 @@ def check_misleading(caption: str, article_text: str):
     
     if cos_sim is None:
         raise ValueError(
-            "This Facebook post does not contain an article link. "
-            "Please paste a Facebook post with an article attached."
+                "Please paste an input with an article link."
         )
 
     # Extract stylometric features 

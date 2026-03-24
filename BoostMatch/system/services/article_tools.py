@@ -115,8 +115,7 @@ def extract_article_for_nlp(url: str) -> str:
 
     if not url:
         raise ValueError(
-            "This Facebook post does not contain an article link. "
-            "Please paste a Facebook post with an article attached."
+                "Please paste an input with an article link."
         )
 
     if _is_social_or_video_link(url):

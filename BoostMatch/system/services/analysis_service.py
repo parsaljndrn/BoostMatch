@@ -12,7 +12,35 @@ from services.article_tools import extract_article_headline
 from urllib.parse import urlparse
 import tempfile
 import requests
+import subprocess
 
+MAX_VIDEO_DURATION = 7 * 60  # 6 minutes in seconds
+
+def get_video_duration(video_path: str) -> float:
+    """Return video duration in seconds using ffprobe."""
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            video_path
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    try:
+        duration = float(result.stdout.strip())
+    except ValueError:
+        raise ValueError("Cannot determine video duration.")
+    return duration
+
+def check_video_duration(video_path: str):
+    duration = get_video_duration(video_path)
+    if duration > MAX_VIDEO_DURATION:
+        raise ValueError("Video is longer than 7 minutes. Cannot process.")
 
 def is_facebook_url(url: str) -> bool:
     if not url:
@@ -28,6 +56,7 @@ def is_facebook_url(url: str) -> bool:
 # WhisperAI setup (using openai.whisper locally)
 # -----------------------------
 try:
+    os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
     from faster_whisper import WhisperModel
     whisper_model = WhisperModel("small", device="cpu")
 except ImportError:
@@ -59,6 +88,8 @@ def transcribe_video(video_url: str) -> str:
             for chunk in r.iter_content(8192):
                 if chunk:
                     f.write(chunk)
+
+        check_video_duration(video_path)
 
         # Extract audio
         subprocess.run(
@@ -112,8 +143,7 @@ def prepare_post_for_analysis(
         else:
             # Non-Facebook videos cannot be transcribed → fallback
             raise ValueError(
-                "This Facebook post does not contain a valid article link. "
-                "Please paste a Facebook post with an article attached."
+                "Please paste an input with an article link."
             )
 
 
@@ -154,14 +184,14 @@ def classify_post(caption: str = "", article_link: str = None, video_url: str = 
     """
     MAX_TRANSLATE_CHARS = 6000
 
-    # ✅ Step 1: Clean caption FIRST
     caption = clean_caption_text(caption)
 
-    """# ✅ Step 2: Validate meaningful text
-    if not is_meaningful_text(caption):
+    # Step 4: Check maximum length
+    if len(caption) > MAX_TRANSLATE_CHARS:
         raise ValueError(
-            "Cannot analyze post: no caption provided. "
-            "Please paste a Facebook post with a caption.6000")"""
+            f"Cannot analyze input: caption too long ({len(caption)} characters). "
+            f"Please enter a shorter caption."
+        )
 
     # ✅ Step 3: Normalize language (translation if needed)
     caption_to_use, lang_detected = normalize_language(caption)
@@ -169,7 +199,7 @@ def classify_post(caption: str = "", article_link: str = None, video_url: str = 
     if len(caption_to_use) > MAX_TRANSLATE_CHARS:
         raise ValueError(
             f"Cannot analyze post: caption too long ({len(caption_to_use)} chars). "
-            f"Please try a post with shorten the caption and try again."
+            f"Please try a post with shorter caption."
         )
 
     # ✅ Step 4: Prepare article/video text

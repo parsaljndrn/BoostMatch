@@ -303,6 +303,15 @@
   </div>
 </section>
 
+{% if error %}
+<script>
+  const loadingOverlay = document.getElementById("loading-overlay");
+  if (loadingOverlay) {
+    loadingOverlay.style.display = "none";
+  }
+</script>
+{% endif %}
+
 <script>
   const verifyButtons = document.querySelectorAll('.verify-btn');
   const resultsWrapper = document.getElementById('resultsSection');
@@ -314,17 +323,45 @@
   const tipsUrl = document.getElementById('tips-url');
   const tipsManual = document.getElementById('tips-manual');
   
-  const loadingOverlay = document.getElementById("loading-overlay");
+  loadingOverlay = document.getElementById("loading-overlay");
+  if (loadingOverlay) {
+    loadingOverlay.style.display = "none";
+  }
   verifyButtons.forEach(button => {
-    button.addEventListener('click', () => {
-    // Hide old results immediately
-    if(resultsWrapper){
-      resultsWrapper.style.display = "none";
-    }
-    // Show loading screen
-    if(loadingOverlay){
-      loadingOverlay.style.display = "flex";
-    }
+    button.addEventListener('click', (e) => {
+      const captionInput = document.getElementById("caption");
+      const fbUrlInput = document.querySelector("input[name='fb_url']");
+    
+      const caption = captionInput ? captionInput.value.trim() : "";
+      const fbUrl = fbUrlInput ? fbUrlInput.value.trim() : "";
+    
+      const manualTabActive = tab2.checked;
+      const urlTabActive = tab1.checked;
+    
+      // ❌ Block empty input
+      if ((manualTabActive && !caption) || (urlTabActive && !fbUrl)) {
+        e.preventDefault();
+        alert("Please enter the required input before verifying.");
+        return;
+      }
+    
+      // ✅ STOP normal submit
+      e.preventDefault();
+    
+      // Hide old results
+      if (resultsWrapper) {
+        resultsWrapper.style.display = "none";
+      }
+    
+      // ✅ SHOW loading FIRST
+      if (loadingOverlay) {
+        loadingOverlay.style.display = "flex";
+      }
+    
+      // ✅ Submit AFTER slight delay (so UI updates)
+      setTimeout(() => {
+        button.closest("form").submit();
+      }, 100); // 100ms is enough
     });
   });
 

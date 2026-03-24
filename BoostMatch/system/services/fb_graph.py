@@ -65,10 +65,11 @@ def resolve_redirect(url: str) -> str:
 def normalize_facebook_url(url: str) -> str:
     parsed = urlparse(url)
     path = parsed.path.lower()
-    if "/share/" in path:
+
+    # Only resolve redirects
+    if "/share/" in path or parsed.netloc == "fb.watch":
         return resolve_redirect(url)
-    if parsed.netloc == "fb.watch":
-        return resolve_redirect(url)
+
     return url
 
 # =========================================================
@@ -87,8 +88,33 @@ def extract_post_id(fb_url: str):
     domain = parsed.netloc.lower()
     path = parsed.path.lower()
     
+    # ✅ Step 1: Domain check
     if not any(d in domain for d in FACEBOOK_DOMAINS):
         raise ValueError("The link pasted is not a Facebook link.")
+
+    # ✅ Step 2: Block NON-POST paths
+    for invalid in NON_POST_PATHS:
+        if invalid in path:
+            raise ValueError(
+                "Invalid Facebook URL. Please paste a Facebook POST link, not a profile or page."
+            )
+
+    # ✅ Step 3: Ensure it's a POST-type URL
+    if not any(x in path for x in [
+        "/posts/",
+        "/videos/",
+        "/reel/",
+        "permalink.php",
+        "/v/",
+        "/share/" 
+    ]):
+        raise ValueError(
+            "Invalid Facebook URL. Please paste a Facebook POST link."
+        )
+
+    # ==============================
+    # ✅ ID EXTRACTION STARTS HERE
+    # ==============================
 
     # Normal post
     match = re.search(r"/posts/(\d+)", path)
@@ -104,7 +130,11 @@ def extract_post_id(fb_url: str):
     video_match = re.search(r"/v/([a-zA-Z0-9]+)", path)
     if video_match:
         return video_match.group(1), "video"
-
+    
+    share_match = re.search(r"/share/p/([a-zA-Z0-9]+)", path)
+    if share_match:
+        return share_match.group(1), "post"
+    
     # Permalink.php
     if "permalink.php" in path:
         query = parse_qs(parsed.query)
@@ -113,7 +143,7 @@ def extract_post_id(fb_url: str):
         if story_fbid and page_id:
             return f"{page_id}_{story_fbid}", "post"
 
-    # Fallback: any numeric ID in the URL
+    # ⚠️ Safe fallback (now protected by validation above)
     match = re.search(r"(\d{8,})", fb_url)
     if match:
         return match.group(1), "post"
@@ -255,8 +285,14 @@ def fetch_facebook_post(fb_url: str) -> dict:
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
-    except Exception as e:
-        raise ValueError(f"Error connecting to Facebook API: {str(e)}")
+    except requests.exceptions.HTTPError:
+        raise ValueError(
+            "Unable to fetch Facebook post. The link may be invalid, private, or not a post."
+        )
+    except Exception:
+        raise ValueError(
+            "An error occurred while connecting to Facebook. Please try again."
+        )
 
     # 3️⃣ Extract caption and video_url safely
     if id_type == "post":
