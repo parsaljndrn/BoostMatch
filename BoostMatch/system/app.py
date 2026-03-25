@@ -30,6 +30,8 @@ def index():
         fb_url = request.form.get("fb_url", "").strip()
         caption = request.form.get("caption", "").strip()
         link = request.form.get("link", "").strip() or None
+        
+        print("DEBUG FB URL:", fb_url)
         # Manual input validation: empty or link-only
         if not caption and not fb_url:
             return render_template("index.html", result=None, error="Cannot analyze input: caption is empty. Please enter a caption.")
