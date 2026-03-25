@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session
-from services.fb_graph import extract_post_id, fetch_facebook_post
+from services.fb_graph import extract_post_id, fetch_facebook_post, clean_fb_caption
 from services.article_tools import extract_article_headline
 from services.matcher import check_misleading
-from services.analysis_service import classify_post, is_facebook_url
+from services.analysis_service import classify_post, is_facebook_url, normalize_text
 import validators
 import os
 import re
@@ -57,9 +57,16 @@ def index():
 
                 # Fetch and classify FB post
                 post_data = fetch_facebook_post(fb_url)
+
+                # --- NORMALIZE FACEBOOK CAPTION AND ARTICLE ---
+                raw_caption = post_data.get("caption") or ""
+                cleaned_caption = clean_fb_caption(raw_caption)
+                post_caption = normalize_text(cleaned_caption)
+                post_article = normalize_text(post_data.get("article_link") or "")
+
                 result = classify_post(
-                    caption=post_data.get("caption"),
-                    article_link=post_data.get("article_link"),
+                    caption=post_caption,
+                    article_link=post_article or None,
                     video_url=post_data.get("video_url")
                 )
 
@@ -83,9 +90,22 @@ def index():
                 if re.fullmatch(url_pattern, caption):
                     raise ValueError("Cannot analyze input: caption appears to be only a link. Please enter actual text.")
 
+                # --- TRANSLATE & NORMALIZE MANUAL CAPTION LIKE FB PATH ---
+                from deep_translator import GoogleTranslator
+
+                # 1. Translate to English if not already
+                translated_caption = GoogleTranslator(source='auto', target='en').translate(caption)
+
+                # 2. Normalize text exactly like FB captions
+                normalized_caption = normalize_text(translated_caption)
+
+                # 3. Normalize link too (optional)
+                normalized_link = normalize_text(link) if link else None
+
+                # 4. Classify
                 result = classify_post(
-                    caption=caption,
-                    article_link=link or None,
+                    caption=normalized_caption,
+                    article_link=normalized_link or None,
                     video_url=None
                 )
 
@@ -93,7 +113,7 @@ def index():
                     "prediction": result['prediction'],
                     "similarity": round(result['cosine_similarity'] * 100, 2) if result['cosine_similarity'] else None,
                     "caption": result['caption_used'],
-                    "article_link": link or None,
+                    "article_link": normalized_link or None,
                     "article_text": result['article_used']
                 }
                 return redirect(url_for("index"))

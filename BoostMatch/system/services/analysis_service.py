@@ -13,6 +13,18 @@ from urllib.parse import urlparse
 import tempfile
 import requests
 import subprocess
+import unicodedata
+
+def normalize_text(text: str) -> str:
+    # Normalize Unicode to NFC
+    text = unicodedata.normalize("NFC", text)
+    # Remove zero-width spaces
+    text = text.replace("\u200B", "")
+    # Replace non-breaking spaces with normal spaces
+    text = text.replace("\u00A0", " ")
+    # Strip leading/trailing whitespace
+    text = text.strip()
+    return text
 
 MAX_VIDEO_DURATION = 7 * 60  # 6 minutes in seconds
 
@@ -34,7 +46,7 @@ def get_video_duration(video_path: str) -> float:
     try:
         duration = float(result.stdout.strip())
     except ValueError:
-        raise ValueError("Cannot determine video duration.")
+        raise ValueError("Invalid or unsupported video source. Only direct Facebook videos are supported.")
     return duration
 
 def check_video_duration(video_path: str):
@@ -70,7 +82,11 @@ except ImportError:
 def transcribe_video(video_url: str) -> str:
     if not video_url:
         return ""
-
+    
+    domain = urlparse(video_url).netloc.lower()
+    if not any(d in domain for d in ["facebook.com", "fb.watch", "fbcdn.net"]):
+        raise ValueError("Only Facebook videos can be transcribed.")
+    
     if whisper_model is None:
         raise ValueError("Faster-Whisper not installed.")
 
@@ -97,6 +113,8 @@ def transcribe_video(video_url: str) -> str:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
+        if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
+            raise ValueError("This Facebook video contains no audio and cannot be transcribed.")
 
         # ✅ Correct Faster-Whisper usage
         segments, _ = whisper_model.transcribe(audio_path, task="translate")
@@ -136,16 +154,18 @@ def prepare_post_for_analysis(
     # Case 2: caption + video (no article link)
     if caption and video_url and not article_link:
         domain = urlparse(video_url).netloc.lower()
-        if any(x in domain for x in ["facebook.com", "fb.watch", "fbcdn.net"]):
-            # Facebook video → transcribe
-            video_text = transcribe_video(video_url)  # allow exceptions to propagate
-            return caption, video_text
-        else:
-            # Non-Facebook videos cannot be transcribed → fallback
+
+        allowed_domains = ["facebook.com", "fb.watch", "fbcdn.net"]
+
+        if not any(domain.endswith(d) for d in allowed_domains):
             raise ValueError(
-                "Please paste an input with an article link."
+                "Invalid video source: Only Facebook videos are supported. "
+                "Please provide a Facebook post with an article link instead."
             )
 
+        # Only Facebook videos reach here
+        video_text = transcribe_video(video_url)
+        return caption, video_text
 
     # Case 3: video + article link (no caption)
     if video_url and article_link and not caption:
@@ -182,6 +202,11 @@ def classify_post(caption: str = "", article_link: str = None, video_url: str = 
     High-level function to classify a Facebook post.
     Returns a dict with prediction, cosine similarity, and text used.
     """
+
+    print("\n===== RAW INPUT DEBUG =====")
+    print("RAW CAPTION:", repr(caption[:200]))
+    print("===========================\n")
+
     MAX_TRANSLATE_CHARS = 6000
 
     caption = clean_caption_text(caption)

@@ -202,23 +202,31 @@ input[type="url"], input[type="text"] { width: 100%; padding: 12px 15px; border-
 
 
 /*  DIV 1: RESULTS WRAPPER (White Card) */
+/* Ensure the results card wraps text normally */
 .results-wrapper {
-  display: none; 
-  width: 90%;
-  max-width: 1100px;
-  position: relative; 
-  z-index: 20;        
-  
-  /* The White Background Card Look */
-  background: white;
-  padding: 15px; 
-  border-radius: 25px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  margin-top: 150px; 
-  margin-bottom: 80px; 
-  align-items: stretch;
-  overflow: hidden;
-  animation: slideUp 0.5s ease-out;
+    display: block;             /* show block (or flex if needed) */
+    width: 90%;
+    max-width: 1100px;
+    background: white;
+    padding: 15px;
+    border-radius: 25px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+
+    /* KEY fixes */
+    white-space: normal;        /* allow normal line wrapping */
+    word-wrap: break-word;      /* break long words when necessary */
+    overflow-wrap: break-word;  /* modern equivalent */
+    word-break: break-word;     /* fallback for very long unbroken strings */
+}
+
+/* Optional: target paragraph/span inside results-wrapper */
+.results-wrapper p,
+.results-wrapper span {
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.5;           /* makes text more readable */
 }
 
 @keyframes slideUp {

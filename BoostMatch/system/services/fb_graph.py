@@ -40,6 +40,16 @@ BLOCKED_DOMAINS = [
     "facebook.com", # Added to prevent circular loops
     "fb.me"
 ]
+def clean_fb_caption(text: str) -> str:
+    """
+    Remove unwanted Facebook tracking tokens from the caption.
+    Example token: icmlkETFLOWMyRHhlYmR2ZWJVQlEzc3J0...
+    """
+    if not text:
+        return ""
+    # Remove tokens that are unlikely natural language: sequences of 20+ letters/numbers/underscores
+    text = re.sub(r"\s+[A-Za-z0-9_]{20,}", "", text)
+    return text.strip()
 
 # =========================================================
 # REDIRECT RESOLVER
@@ -159,7 +169,7 @@ def extract_urls_from_text(text: str):
 
 def clean_caption_text(text: str) -> str:
     if not text:
-        return text
+        return ""
 
     # Remove emojis
     text = emoji.replace_emoji(text, replace='')
@@ -167,15 +177,17 @@ def clean_caption_text(text: str) -> str:
     # Remove hashtags
     text = re.sub(r'#\w+', '', text)
 
-    # Remove URLs (We extract them before cleaning in the fetch function)
+    # Remove URLs
     text = re.sub(r'https?://\S+', '', text)
 
     # Remove trailing long alphanumeric sequences (fbclid)
     text = re.sub(r'(\s|^)[A-Za-z0-9]{20,}(\s[A-Za-z0-9]{20,})*$', '', text)
 
-    # Collapse spaces
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
+    # Normalize whitespace (IMPORTANT)
+    text = text.replace("\r", " ").replace("\n", " ")
+    text = re.sub(r'\s+', ' ', text)
+
+    return text.strip()
 
 def is_meaningful_text(text: str) -> bool:
     import re
