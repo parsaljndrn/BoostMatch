@@ -1,7 +1,6 @@
 #!/bin/bash
 # Navigate to the folder where app.py is
 cd BoostMatch/system
-
 # Set PORT (Railway provides this automatically)
 export PORT=${PORT:-8080}
 
