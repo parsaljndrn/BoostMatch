@@ -10,7 +10,7 @@ import emoji
 load_dotenv()
 
 GRAPH_VERSION = "v24.0"
-PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
+PAGE_ACCESS_TOKEN = os.environ.get("FB_PAGE_ACCESS_TOKEN")
 
 FACEBOOK_DOMAINS = {
     "facebook.com",
