@@ -6,6 +6,7 @@ from services.analysis_service import classify_post, is_facebook_url, normalize_
 import validators
 import os
 import re
+import shutil
 
 app = Flask(__name__)
 # The secret key is essential to make session.pop() work correctly
@@ -30,6 +31,8 @@ def index():
         fb_url = request.form.get("fb_url", "").strip()
         caption = request.form.get("caption", "").strip()
         link = request.form.get("link", "").strip() or None
+        
+        print("ffprobe:", shutil.which("ffprobe"))
         
         print("DEBUG FB URL:", fb_url)
         # Manual input validation: empty or link-only

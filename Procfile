@@ -1,1 +1,1 @@
-web: cd BoostMatch/system && gunicorn app:app --bind 0.0.0.0:$PORT
+web: bash start.sh
