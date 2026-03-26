@@ -137,18 +137,20 @@ def extract_audio_from_video(video_url: str) -> str:
 # -----------------------------
 # WhisperAI setup (using openai.whisper locally)
 # -----------------------------
-try:
-    os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
-    from faster_whisper import WhisperModel
-    whisper_model = None
-    def get_whisper_model():
-        global whisper_model
-        if whisper_model is None:
-            whisper_model = WhisperModel("tiny", device="cpu")
-        return whisper_model
-except ImportError:
-    whisper_model = None
-    print("[Warning] Faster-Whisper not installed.")
+# Set environment for Faster-Whisper to use your local FFmpeg
+os.environ["WHISPER_FFMPEG"] = "/app/BoostMatch/system/ffmpeg/ffmpeg"
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+
+from faster_whisper import WhisperModel
+
+# Lazy-load the model
+whisper_model = None
+
+def get_whisper_model():
+    global whisper_model
+    if whisper_model is None:
+        whisper_model = WhisperModel("tiny", device="cpu")
+    return whisper_model
 
 
 # -----------------------------
