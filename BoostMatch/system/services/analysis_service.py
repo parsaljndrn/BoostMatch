@@ -15,8 +15,12 @@ import requests
 import subprocess
 import unicodedata
 import sys
-# Base folder where this Python file lives (system/)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Current file is in system/services/
+THIS_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Go up one directory to system/
+BASE_DIR = os.path.dirname(THIS_FILE_DIR)
+
 
 if os.name == "nt":  # Windows
     FFMPEG_BIN = os.path.join(BASE_DIR, "ffmpeg", "ffmpeg.exe")
@@ -43,8 +47,14 @@ def normalize_text(text: str) -> str:
 
 MAX_VIDEO_DURATION = 7 * 60  # 6 minutes in seconds
 
+# --------------------------------------
+# Helper: get video duration using ffprobe
+# --------------------------------------
 def get_video_duration(video_path: str) -> float:
     """Return video duration in seconds using ffprobe."""
+    if not os.path.exists(FFPROBE_BIN):
+        raise FileNotFoundError(f"ffprobe binary not found at {FFPROBE_BIN}")
+
     result = subprocess.run(
         [
             FFPROBE_BIN,
@@ -58,10 +68,12 @@ def get_video_duration(video_path: str) -> float:
         stderr=subprocess.PIPE,
         text=True
     )
+
     try:
         duration = float(result.stdout.strip())
     except ValueError:
-        raise ValueError("Invalid or unsupported video source. Only direct Facebook videos are supported.")
+        raise ValueError("Could not read video duration. Unsupported format or empty file.")
+
     return duration
 
 def check_video_duration(video_path: str):
@@ -79,6 +91,49 @@ def is_facebook_url(url: str) -> bool:
         "m.facebook.com"
     ])
 
+# --------------------------------------
+# Download and extract audio for transcription
+# --------------------------------------
+def extract_audio_from_video(video_url: str) -> str:
+    """Download video and convert to WAV/MP3 audio."""
+    if not os.path.exists(FFMPEG_BIN):
+        raise FileNotFoundError(f"ffmpeg binary not found at {FFMPEG_BIN}")
+
+    # Temporary video file
+    fd, video_path = tempfile.mkstemp(suffix=".mp4")
+    os.close(fd)
+
+    # Temporary audio file
+    audio_path = video_path.replace(".mp4", ".mp3")
+
+    try:
+        # Download video
+        r = requests.get(video_url, stream=True, timeout=30)
+        r.raise_for_status()
+        with open(video_path, "wb") as f:
+            for chunk in r.iter_content(8192):
+                if chunk:
+                    f.write(chunk)
+
+        # Check duration
+        check_video_duration(video_path)
+
+        # Extract audio
+        subprocess.run(
+            [FFMPEG_BIN, "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", audio_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True
+        )
+
+        if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
+            raise ValueError("Video contains no audio. Cannot transcribe.")
+
+        return audio_path
+
+    finally:
+        if os.path.exists(video_path):
+            os.remove(video_path)
 # -----------------------------
 # WhisperAI setup (using openai.whisper locally)
 # -----------------------------
@@ -97,55 +152,30 @@ except ImportError:
 def transcribe_video(video_url: str) -> str:
     if not video_url:
         return ""
-    
+
     domain = urlparse(video_url).netloc.lower()
     if not any(d in domain for d in ["facebook.com", "fb.watch", "fbcdn.net"]):
         raise ValueError("Only Facebook videos can be transcribed.")
-    
+
     if whisper_model is None:
         raise ValueError("Faster-Whisper not installed.")
 
-    fd, video_path = tempfile.mkstemp(suffix=".mp4")
-    os.close(fd)
-
-    audio_path = video_path.replace(".mp4", ".mp3")
+    audio_path = extract_audio_from_video(video_url)
 
     try:
-        # Download video
-        r = requests.get(video_url, stream=True, timeout=30)
-        r.raise_for_status()
-
-        with open(video_path, "wb") as f:
-            for chunk in r.iter_content(8192):
-                if chunk:
-                    f.write(chunk)
-
-        check_video_duration(video_path)
-
-        # Extract audio
-        subprocess.run(
-            [FFMPEG_BIN, "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", audio_path],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-        if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
-            raise ValueError("This Facebook video contains no audio and cannot be transcribed.")
-
-        # ✅ Correct Faster-Whisper usage
+        # Transcribe
         segments, _ = whisper_model.transcribe(audio_path, task="translate")
+        text = " ".join(seg.text for seg in segments).strip()
 
-        video_text = " ".join([seg.text for seg in segments]).strip()
+        if not text:
+            raise ValueError("Transcription failed or returned empty text.")
 
-        if not video_text:
-            raise ValueError("Transcription failed or empty.")
-
-        return video_text
+        return text
 
     finally:
-        if os.path.exists(video_path):
-            os.remove(video_path)
         if os.path.exists(audio_path):
             os.remove(audio_path)
+
 # -----------------------------
 # Prepare caption/article for analysis
 # -----------------------------
