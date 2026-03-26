@@ -20,7 +20,7 @@ import os
 if os.name == "nt":  # Windows
     FFMPEG_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "bin", "ffmpeg.exe")
 else:  # Linux (Railway)
-    FFMPEG_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "ffmpeg")  # make sure chmod +x
+    FFMPEG_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "ffmpeg")  # chmod +x required
 
 def normalize_text(text: str) -> str:
     # Normalize Unicode to NFC
