@@ -14,6 +14,13 @@ import tempfile
 import requests
 import subprocess
 import unicodedata
+import os
+
+# Detect FFmpeg binary
+if os.name == "nt":  # Windows
+    FFMPEG_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "bin", "ffmpeg.exe")
+else:  # Linux (Railway)
+    FFMPEG_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "ffmpeg")  # make sure chmod +x
 
 def normalize_text(text: str) -> str:
     # Normalize Unicode to NFC
@@ -109,7 +116,7 @@ def transcribe_video(video_url: str) -> str:
 
         # Extract audio
         subprocess.run(
-            ["ffmpeg", "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", audio_path],
+            [FFMPEG_BIN, "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", audio_path],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )

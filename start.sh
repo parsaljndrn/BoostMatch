@@ -2,19 +2,18 @@
 
 echo "🚀 START.SH RUNNING"
 
-echo "Updating packages..."
-apt-get update
+# Make sure the Linux FFmpeg binary is executable
+echo "Making FFmpeg executable..."
+chmod +x ./system/ffmpeg/ffmpeg
 
-echo "Installing ffmpeg..."
-apt-get install -y ffmpeg
-
-echo "Checking ffmpeg..."
-which ffmpeg
-which ffprobe
+# Check FFmpeg version to verify it works
+echo "Checking FFmpeg binary..."
+./system/ffmpeg/ffmpeg -version
 
 echo "Moving to app directory..."
 cd BoostMatch/system
 
+# Set port
 export PORT=${PORT:-8080}
 
 echo "Starting Gunicorn..."

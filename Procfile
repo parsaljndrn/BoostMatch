@@ -1,1 +1,1 @@
-web: gunicorn system.app:app --chdir BoostMatch --timeout 800
+web: ./start.sh
