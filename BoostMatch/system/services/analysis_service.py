@@ -14,15 +14,21 @@ import tempfile
 import requests
 import subprocess
 import unicodedata
-import os
+import sys
+# Base folder where this Python file lives (system/)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Detect FFmpeg binary
 if os.name == "nt":  # Windows
-    FFMPEG_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "ffmpeg.exe")
-    FFPROBE_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "ffprobe.exe")
+    FFMPEG_BIN = os.path.join(BASE_DIR, "ffmpeg", "ffmpeg.exe")
+    FFPROBE_BIN = os.path.join(BASE_DIR, "ffmpeg", "ffprobe.exe")
 else:  # Linux (Railway)
-    FFMPEG_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "ffmpeg")
-    FFPROBE_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "ffprobe")
+    # In Railway, the folder structure is: /app/BoostMatch/system/ffmpeg/ffmpeg
+    FFMPEG_BIN = os.path.join(BASE_DIR, "ffmpeg", "ffmpeg")
+    FFPROBE_BIN = os.path.join(BASE_DIR, "ffmpeg", "ffprobe")
+
+# Optional: debug print
+print("FFMPEG_BIN:", FFMPEG_BIN)
+print("FFPROBE_BIN:", FFPROBE_BIN)
 
 def normalize_text(text: str) -> str:
     # Normalize Unicode to NFC
