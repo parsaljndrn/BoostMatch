@@ -109,7 +109,7 @@ def transcribe_video(video_url: str) -> str:
 
         # Extract audio
         subprocess.run(
-            ["ffmpeg", "-i", video_path, "-vn", "-acodec", "mp3", audio_path],
+            ["ffmpeg", "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", audio_path],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
