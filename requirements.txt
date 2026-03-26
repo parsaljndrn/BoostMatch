@@ -11,13 +11,13 @@ click==8.3.1
 cloudpathlib==0.23.0
 colorama==0.4.6
 confection==0.1.5
-ctranslate2==3.24.0
+ctranslate2==4.7.1
 cymem==2.0.13
 decorator==5.2.1
 deep-translator==1.11.4
 emoji==2.15.0
 en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85
-faster-whisper==1.0.3
+faster-whisper==1.2.1
 filelock==3.24.0
 Flask==3.1.2
 flask-cors==6.0.2
