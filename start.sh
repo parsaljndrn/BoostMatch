@@ -8,4 +8,4 @@ cd BoostMatch/system
 export PORT=${PORT:-8080}
 
 # Run the app with gunicorn 
-gunicorn  app:app --host 0.0.0.0 --port $PORT
+gunicorn app:app --bind 0.0.0.0:$PORT
