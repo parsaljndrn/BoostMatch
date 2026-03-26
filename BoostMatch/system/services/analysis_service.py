@@ -18,9 +18,11 @@ import os
 
 # Detect FFmpeg binary
 if os.name == "nt":  # Windows
-    FFMPEG_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "bin", "ffmpeg.exe")
+    FFMPEG_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "ffmpeg.exe")
+    FFPROBE_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "ffprobe.exe")
 else:  # Linux (Railway)
-    FFMPEG_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "ffmpeg")  # chmod +x required
+    FFMPEG_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "ffmpeg")
+    FFPROBE_BIN = os.path.join(os.path.dirname(__file__), "ffmpeg", "ffprobe")
 
 def normalize_text(text: str) -> str:
     # Normalize Unicode to NFC
