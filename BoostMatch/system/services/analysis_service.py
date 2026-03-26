@@ -47,7 +47,7 @@ def get_video_duration(video_path: str) -> float:
     """Return video duration in seconds using ffprobe."""
     result = subprocess.run(
         [
-            "ffprobe",
+            FFPROBE_BIN,
             "-v", "error",
             "-select_streams", "v:0",
             "-show_entries", "stream=duration",
