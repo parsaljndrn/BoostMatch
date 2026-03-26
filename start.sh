@@ -6,23 +6,18 @@ echo "🚀 START.SH RUNNING"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Make FFmpeg and FFprobe executable
-echo "Making FFmpeg and FFprobe executable..."
-chmod +x "$DIR/system/ffmpeg/ffmpeg"
-chmod +x "$DIR/system/ffmpeg/ffprobe"
+chmod +x "$DIR/BoostMatch/system/ffmpeg/ffmpeg"
+chmod +x "$DIR/BoostMatch/system/ffmpeg/ffprobe"
 
 # Check binaries
-echo "Checking FFmpeg version..."
-"$DIR/system/ffmpeg/ffmpeg" -version
-
-echo "Checking FFprobe version..."
-"$DIR/system/ffmpeg/ffprobe" -version
+"$DIR/BoostMatch/system/ffmpeg/ffmpeg" -version
+"$DIR/BoostMatch/system/ffmpeg/ffprobe" -version
 
 # Move to app directory
-cd "$DIR/system"
+cd "$DIR/BoostMatch/system" || { echo "System directory not found"; exit 1; }
 
 # Set port
 export PORT=${PORT:-8080}
 
 # Start Gunicorn
-echo "Starting Gunicorn..."
 gunicorn app:app --bind 0.0.0.0:$PORT --log-level debug
