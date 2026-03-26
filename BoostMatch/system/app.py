@@ -7,6 +7,9 @@ import validators
 import os
 import re
 import shutil
+import sys
+import faster_whisper
+
 
 app = Flask(__name__)
 # The secret key is essential to make session.pop() work correctly
@@ -31,6 +34,10 @@ def index():
         fb_url = request.form.get("fb_url", "").strip()
         caption = request.form.get("caption", "").strip()
         link = request.form.get("link", "").strip() or None
+
+        print("Python executable:", sys.executable)
+        print("Python version:", sys.version)
+        print("Faster-Whisper version:", faster_whisper.__version__)
         
         print("ffprobe:", shutil.which("ffprobe"))
         
