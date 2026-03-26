@@ -20,4 +20,4 @@ cd "$DIR/BoostMatch/system" || { echo "System directory not found"; exit 1; }
 export PORT=${PORT:-8080}
 
 # Start Gunicorn
-gunicorn app:app --bind 0.0.0.0:$PORT --log-level debug
+gunicorn app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 1 --threads 2 --log-level debug

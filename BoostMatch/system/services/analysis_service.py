@@ -140,7 +140,12 @@ def extract_audio_from_video(video_url: str) -> str:
 try:
     os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
     from faster_whisper import WhisperModel
-    whisper_model = WhisperModel("small", device="cpu")
+    whisper_model = None
+    def get_whisper_model():
+        global whisper_model
+        if whisper_model is None:
+            whisper_model = WhisperModel("tiny", device="cpu")
+        return whisper_model
 except ImportError:
     whisper_model = None
     print("[Warning] Faster-Whisper not installed.")
@@ -164,6 +169,7 @@ def transcribe_video(video_url: str) -> str:
 
     try:
         # Transcribe
+        model = get_whisper_model()
         segments, _ = whisper_model.transcribe(audio_path, task="translate")
         text = " ".join(seg.text for seg in segments).strip()
 
