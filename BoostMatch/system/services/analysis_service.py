@@ -125,16 +125,30 @@ def extract_audio_from_video(video_url: str) -> str:
         yt_dlp_path = shutil.which("yt-dlp")
         if yt_dlp_path is None:
             raise RuntimeError("yt-dlp is not installed. Add it to requirements.txt")
-
+        
+        env = os.environ.copy()
+        env["PATH"] = os.path.dirname(FFMPEG_BIN) + ":" + env.get("PATH", "")
+        
+        output_template = os.path.join(tmpdir, "video.%(ext)s")
+        
         subprocess.run(
             [
                 yt_dlp_path,
-                "-f", "best[ext=mp4]/best",
-                "-o", video_path,
+                "-f", "bv*+ba/best",
+                "--merge-output-format", "mp4",
+                "-o", output_template,
                 video_url
             ],
-            check=True
+            check=True,
+            env=env
         )
+        
+        # Resolve actual file
+        video_files = [f for f in os.listdir(tmpdir) if f.startswith("video.")]
+        if not video_files:
+            raise ValueError("yt-dlp did not produce a video file.")
+        
+        video_path = os.path.join(tmpdir, video_files[0])
 
         # Verify download
         if not os.path.exists(video_path) or os.path.getsize(video_path) < 1000:
