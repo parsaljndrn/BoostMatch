@@ -95,39 +95,54 @@ def is_facebook_url(url: str) -> bool:
 # Download and extract audio for transcription
 # --------------------------------------
 def extract_audio_from_video(video_url: str) -> str:
+def extract_audio_from_video(video_url: str) -> str:
     """
-    Download a Facebook video using yt-dlp and extract audio as MP3 using FFmpeg.
+    Download a Facebook video with yt-dlp and convert to MP3 audio for transcription.
     """
+    import shutil
     with tempfile.TemporaryDirectory() as tmpdir:
         video_path = os.path.join(tmpdir, "video.mp4")
         audio_path = os.path.join(tmpdir, "audio.mp3")
 
-        # Download actual video
+        # Download video using yt-dlp
+        yt_dlp_path = shutil.which("yt-dlp")
+        if yt_dlp_path is None:
+            raise RuntimeError("yt-dlp is not installed. Add it to requirements.txt")
+
         subprocess.run(
             [
-                "yt-dlp",
+                yt_dlp_path,
                 "-f", "best[ext=mp4]/best",
                 "-o", video_path,
                 video_url
             ],
             check=True
         )
-        if not os.path.exists(video_path) or os.path.getsize(video_path) < 1000:  # less than 1 KB
+
+        # Verify download
+        if not os.path.exists(video_path) or os.path.getsize(video_path) < 1000:
             raise ValueError(
-                f"Downloaded video is too small or empty ({os.path.getsize(video_path) if os.path.exists(video_path) else 0} bytes). Likely failed download."
+                f"Downloaded video is too small or empty ({os.path.getsize(video_path) if os.path.exists(video_path) else 0} bytes). "
+                "This usually happens with private, deleted, or blocked Facebook videos."
             )
 
-        # Extract audio
-        subprocess.run(
-            [FFMPEG_BIN, "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", audio_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=True
-        )
+        # Extract audio using FFmpeg
+        try:
+            subprocess.run(
+                [FFMPEG_BIN, "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", audio_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                f"FFmpeg failed. Return code {e.returncode}. stderr: {e.stderr}"
+            )
 
+        # Verify audio file
         if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
-            raise ValueError("Audio extraction failed. Cannot process.")
+            raise ValueError("Audio extraction failed: audio file missing or empty.")
 
         return audio_path
 
