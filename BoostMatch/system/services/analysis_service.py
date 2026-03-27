@@ -95,40 +95,40 @@ def is_facebook_url(url: str) -> bool:
 # Download and extract audio for transcription
 # --------------------------------------
 def extract_audio_from_video(video_url: str) -> str:
-    """Download video and convert to WAV/MP3 audio."""
-    if not os.path.exists(FFMPEG_BIN):
-        raise FileNotFoundError(f"ffmpeg binary not found at {FFMPEG_BIN}")
-
-    # Temporary video file
+    """
+    Download a Facebook video using yt-dlp and extract audio as MP3 using local FFmpeg.
+    Returns path to audio file.
+    """
+    # Temporary MP4 video path
     fd, video_path = tempfile.mkstemp(suffix=".mp4")
     os.close(fd)
 
-    # Temporary audio file
+    # Temporary MP3 audio path
     audio_path = video_path.replace(".mp4", ".mp3")
 
     try:
-        # Download video
-        r = requests.get(video_url, stream=True, timeout=30)
-        r.raise_for_status()
-        with open(video_path, "wb") as f:
-            for chunk in r.iter_content(8192):
-                if chunk:
-                    f.write(chunk)
-
-        # Check duration
-        check_video_duration(video_path)
-
-        # Extract audio
-        result = subprocess.run(
-            [FFMPEG_BIN, "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", audio_path],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+        # Step 1: Download actual video with yt-dlp
+        subprocess.run(
+            [
+                "/app/.venv/bin/yt-dlp",  # or 'yt-dlp' if PATH
+                "-f", "best[ext=mp4]/best",
+                "-o", video_path,
+                video_url
+            ],
             check=True
         )
 
-        print("FFmpeg stdout:", result.stdout)
-        print("FFmpeg stderr:", result.stderr)
-        result.check_returncode()  # raises CalledProcessError if non-zero
+        # Step 2: Check duration
+        check_video_duration(video_path)
+
+        # Step 3: Extract audio using local FFmpeg
+        subprocess.run(
+            [FFMPEG_BIN, "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", audio_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
 
         if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
             raise ValueError("Video contains no audio. Cannot transcribe.")
@@ -138,6 +138,7 @@ def extract_audio_from_video(video_url: str) -> str:
     finally:
         if os.path.exists(video_path):
             os.remove(video_path)
+            
 # -----------------------------
 # WhisperAI setup (using openai.whisper locally)
 # -----------------------------
