@@ -119,12 +119,16 @@ def extract_audio_from_video(video_url: str) -> str:
         check_video_duration(video_path)
 
         # Extract audio
-        subprocess.run(
+        result = subprocess.run(
             [FFMPEG_BIN, "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", audio_path],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True
         )
+
+        print("FFmpeg stdout:", result.stdout)
+        print("FFmpeg stderr:", result.stderr)
+        result.check_returncode()  # raises CalledProcessError if non-zero
 
         if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
             raise ValueError("Video contains no audio. Cannot transcribe.")
