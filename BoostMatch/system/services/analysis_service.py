@@ -128,9 +128,9 @@ def extract_audio_from_video(video_url: str) -> str:
         
         env = os.environ.copy()
         env["PATH"] = os.path.dirname(FFMPEG_BIN) + ":" + env.get("PATH", "")
-
+        
         output_template = os.path.join(tmpdir, "video.%(ext)s")
-
+        
         subprocess.run(
             [
                 yt_dlp_path,
@@ -142,12 +142,12 @@ def extract_audio_from_video(video_url: str) -> str:
             check=True,
             env=env
         )
-
+        
         # Resolve actual file
         video_files = [f for f in os.listdir(tmpdir) if f.startswith("video.")]
         if not video_files:
             raise ValueError("yt-dlp did not produce a video file.")
-
+        
         video_path = os.path.join(tmpdir, video_files[0])
 
         # Verify download
@@ -220,13 +220,8 @@ def transcribe_video(video_url: str) -> str:
         return ""
 
     domain = urlparse(video_url).netloc.lower()
-    if not any(d in domain for d in ["facebook.com", "fb.watch"]):
+    if not any(d in domain for d in ["facebook.com", "fb.watch", "fbcdn.net"]):
         raise ValueError("Only Facebook videos can be transcribed.")
-    if "fbcdn.net" in video_url:
-        raise ValueError(
-            "Invalid video source: Direct CDN links are not supported. "
-            "Please use the original Facebook post URL."
-        )
 
     audio_path = None
 
