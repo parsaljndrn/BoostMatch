@@ -172,7 +172,7 @@ def transcribe_video(video_url: str) -> str:
     try:
         # Transcribe
         model = get_whisper_model()
-        segments, _ = whisper_model.transcribe(audio_path, task="translate")
+        segments, _ = model.transcribe(audio_path, task="translate")
         text = " ".join(seg.text for seg in segments).strip()
 
         if not text:
