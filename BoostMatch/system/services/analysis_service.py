@@ -90,20 +90,38 @@ def is_facebook_url(url: str) -> bool:
         "fb.watch",
         "m.facebook.com"
     ])
+def has_audio_stream(video_path: str) -> bool:
+    """Check if the video contains an audio stream using ffprobe."""
+    if not os.path.exists(FFPROBE_BIN):
+        raise FileNotFoundError(f"ffprobe binary not found at {FFPROBE_BIN}")
 
+    result = subprocess.run(
+        [
+            FFPROBE_BIN,
+            "-v", "error",
+            "-select_streams", "a",
+            "-show_entries", "stream=codec_type",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            video_path
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+
+    return "audio" in result.stdout.lower()
 # --------------------------------------
 # Download and extract audio for transcription
 # --------------------------------------
 def extract_audio_from_video(video_url: str) -> str:
-    """
-    Download a Facebook video with yt-dlp and convert to MP3 audio for transcription.
-    """
     import shutil
-    with tempfile.TemporaryDirectory() as tmpdir:
-        video_path = os.path.join(tmpdir, "video.mp4")
-        audio_path = os.path.join(tmpdir, "audio.mp3")
 
-        # Download video using yt-dlp
+    tmpdir = tempfile.mkdtemp()
+    video_path = os.path.join(tmpdir, "video.mp4")
+    audio_path = os.path.join(tmpdir, "audio.mp3")
+
+    try:
+        # Download video
         yt_dlp_path = shutil.which("yt-dlp")
         if yt_dlp_path is None:
             raise RuntimeError("yt-dlp is not installed. Add it to requirements.txt")
@@ -121,29 +139,45 @@ def extract_audio_from_video(video_url: str) -> str:
         # Verify download
         if not os.path.exists(video_path) or os.path.getsize(video_path) < 1000:
             raise ValueError(
-                f"Downloaded video is too small or empty ({os.path.getsize(video_path) if os.path.exists(video_path) else 0} bytes). "
-                "This usually happens with private, deleted, or blocked Facebook videos."
+                f"Downloaded video is too small or empty ({os.path.getsize(video_path) if os.path.exists(video_path) else 0} bytes)."
             )
 
-        # Extract audio using FFmpeg
-        try:
-            subprocess.run(
-                [FFMPEG_BIN, "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", audio_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=True
-            )
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(
-                f"FFmpeg failed. Return code {e.returncode}. stderr: {e.stderr}"
-            )
+        # ✅ Check audio stream
+        if not has_audio_stream(video_path):
+            raise ValueError("This video has no audio stream. Cannot perform transcription.")
+
+        # Extract audio
+        result = subprocess.run(
+            [
+                FFMPEG_BIN,
+                "-i", video_path,
+                "-vn",
+                "-acodec", "libmp3lame",
+                "-ar", "16000",
+                "-ac", "1",
+                audio_path
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(f"FFmpeg failed: {result.stderr}")
 
         # Verify audio file
         if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
             raise ValueError("Audio extraction failed: audio file missing or empty.")
 
         return audio_path
+
+    except Exception:
+        # 🔥 CLEANUP ON FAILURE
+        try:
+            shutil.rmtree(tmpdir)
+        except Exception:
+            pass
+        raise
 
 # -----------------------------
 # WhisperAI setup (using openai.whisper locally)
@@ -175,10 +209,11 @@ def transcribe_video(video_url: str) -> str:
     if not any(d in domain for d in ["facebook.com", "fb.watch", "fbcdn.net"]):
         raise ValueError("Only Facebook videos can be transcribed.")
 
-    audio_path = extract_audio_from_video(video_url)
+    audio_path = None
 
     try:
-        # Transcribe
+        audio_path = extract_audio_from_video(video_url)
+
         model = get_whisper_model()
         segments, _ = model.transcribe(audio_path, task="translate")
         text = " ".join(seg.text for seg in segments).strip()
@@ -189,8 +224,15 @@ def transcribe_video(video_url: str) -> str:
         return text
 
     finally:
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
+        if audio_path:
+            tmpdir = os.path.dirname(audio_path)
+    
+            import shutil
+            try:
+                if os.path.exists(tmpdir):
+                    shutil.rmtree(tmpdir)
+            except Exception:
+                pass
 
 # -----------------------------
 # Prepare caption/article for analysis
