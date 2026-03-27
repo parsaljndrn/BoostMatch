@@ -96,32 +96,28 @@ def is_facebook_url(url: str) -> bool:
 # --------------------------------------
 def extract_audio_from_video(video_url: str) -> str:
     """
-    Download a Facebook video using yt-dlp and extract audio as MP3 using local FFmpeg.
-    Returns path to audio file.
+    Download a Facebook video using yt-dlp and extract audio as MP3 using FFmpeg.
     """
-    # Temporary MP4 video path
-    fd, video_path = tempfile.mkstemp(suffix=".mp4")
-    os.close(fd)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        video_path = os.path.join(tmpdir, "video.mp4")
+        audio_path = os.path.join(tmpdir, "audio.mp3")
 
-    # Temporary MP3 audio path
-    audio_path = video_path.replace(".mp4", ".mp3")
-
-    try:
-        # Step 1: Download actual video with yt-dlp
+        # Download actual video
         subprocess.run(
             [
-                "/app/.venv/bin/yt-dlp",  # or 'yt-dlp' if PATH
+                "yt-dlp",
                 "-f", "best[ext=mp4]/best",
                 "-o", video_path,
                 video_url
             ],
             check=True
         )
+        if not os.path.exists(video_path) or os.path.getsize(video_path) < 1000:  # less than 1 KB
+            raise ValueError(
+                f"Downloaded video is too small or empty ({os.path.getsize(video_path) if os.path.exists(video_path) else 0} bytes). Likely failed download."
+            )
 
-        # Step 2: Check duration
-        check_video_duration(video_path)
-
-        # Step 3: Extract audio using local FFmpeg
+        # Extract audio
         subprocess.run(
             [FFMPEG_BIN, "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", audio_path],
             stdout=subprocess.PIPE,
@@ -131,14 +127,10 @@ def extract_audio_from_video(video_url: str) -> str:
         )
 
         if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
-            raise ValueError("Video contains no audio. Cannot transcribe.")
+            raise ValueError("Audio extraction failed. Cannot process.")
 
         return audio_path
 
-    finally:
-        if os.path.exists(video_path):
-            os.remove(video_path)
-            
 # -----------------------------
 # WhisperAI setup (using openai.whisper locally)
 # -----------------------------
