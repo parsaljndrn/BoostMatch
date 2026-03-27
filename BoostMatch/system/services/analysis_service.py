@@ -95,7 +95,6 @@ def is_facebook_url(url: str) -> bool:
 # Download and extract audio for transcription
 # --------------------------------------
 def extract_audio_from_video(video_url: str) -> str:
-def extract_audio_from_video(video_url: str) -> str:
     """
     Download a Facebook video with yt-dlp and convert to MP3 audio for transcription.
     """
