@@ -263,13 +263,17 @@ def extract_video_url(data):
     attachments = data.get("attachments", {}).get("data", [])
 
     for item in attachments:
+        # top-level video URL
         if item.get("media_type") == "video":
-            return item.get("url")
+            media = item.get("media") or {}
+            return media.get("source") or item.get("url")
 
+        # check subattachments
         subattachments = item.get("subattachments", {}).get("data", [])
         for sub in subattachments:
             if sub.get("media_type") == "video":
-                return sub.get("url")
+                media = sub.get("media") or {}
+                return media.get("source") or sub.get("url")
 
     return None
 
@@ -305,6 +309,9 @@ def fetch_facebook_post(fb_url: str) -> dict:
         raise ValueError(
             "An error occurred while connecting to Facebook. Please try again."
         )
+    
+    import json
+    print(json.dumps(data, indent=2))
 
     # 3️⃣ Extract caption and video_url safely
     if id_type == "post":
@@ -313,7 +320,10 @@ def fetch_facebook_post(fb_url: str) -> dict:
     else:  # video / reel
         raw_caption = (data.get("description") or "").strip()
         video_url = data.get("source")
-
+    
+    if not video_url:
+        raise ValueError("No valid video URL found in the post.")
+    
     # 4️⃣ Identify best article link
     found_article_link = None
     attached_link = data.get("link")
