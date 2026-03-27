@@ -164,9 +164,6 @@ def transcribe_video(video_url: str) -> str:
     if not any(d in domain for d in ["facebook.com", "fb.watch", "fbcdn.net"]):
         raise ValueError("Only Facebook videos can be transcribed.")
 
-    if whisper_model is None:
-        raise ValueError("Faster-Whisper not installed.")
-
     audio_path = extract_audio_from_video(video_url)
 
     try:
