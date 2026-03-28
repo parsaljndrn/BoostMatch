@@ -11,11 +11,11 @@ def _normalize_url(url: str) -> str:
     return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/144.0.0.0 Safari/537.36"
-    )
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Connection": "keep-alive",
 }
 
 MIN_ARTICLE_LENGTH = 300
@@ -79,11 +79,25 @@ def extract_article_headline(url: str) -> str | None:
 
     # ✅ NORMALIZE URL HERE
     url = _normalize_url(url)
+    # ✅ CLEAN URL FIRST
+    url = _clean_extracted_url(url)
+
+    # ✅ REMOVE fbclid / query params
+    url = url.split("?")[0]
 
     try:
-        response = requests.get(url, headers=HEADERS, timeout=15)
+        response = requests.get(
+            url,
+            headers={**HEADERS, "Referer": "https://www.google.com/"},
+            timeout=15
+        )
+
+        print("STATUS CODE:", response.status_code)  # 🔍 DEBUG
+
         response.raise_for_status()
-    except requests.exceptions.RequestException:
+
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR DETAILS]: {e}")
         print(f"[Warning] Failed to fetch article: {url}")
         return None
 
@@ -121,13 +135,24 @@ def extract_article_for_nlp(url: str) -> str:
             "Please paste a Facebook post link with an article link attached to it."
         )
 
+    # ✅ CLEAN URL
+    url = _clean_extracted_url(url)
+    url = url.split("?")[0]
+    
     try:
-        response = requests.get(url, headers=HEADERS, timeout=15)
+        response = requests.get(
+            url,
+            headers={**HEADERS, "Referer": "https://www.google.com/"},
+            timeout=15
+        )
+    
+        print("STATUS CODE:", response.status_code)  # 🔍 DEBUG
+    
         response.raise_for_status()
-    except requests.exceptions.RequestException:
+    
+    except requests.exceptions.RequestException as e:
         raise ValueError(
-            "Failed to fetch the attached article. "
-            "The website may be unreachable or blocked."
+            f"Failed to fetch the attached article. ({e})"
         )
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -157,7 +182,8 @@ def _is_social_or_video_link(url: str):
 def _clean_dom(soup):
     for tag in soup(["script", "style", "nav", "footer", "aside", "header"]):
         tag.decompose()
-
+def _clean_extracted_url(url: str) -> str:
+    return url.strip().rstrip('].,)\'"')
 
 # =====================================================
 # HEADLINE EXTRACTION LOGIC
