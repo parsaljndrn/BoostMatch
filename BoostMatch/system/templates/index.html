@@ -263,6 +263,7 @@
 </div>
 
 <script>
+  const verifyButtons = document.querySelectorAll('.verify-btn');
   const resultsWrapper = document.getElementById('resultsSection');
   const tab1 = document.getElementById('tab1');
   const tab2 = document.getElementById('tab2');
@@ -383,7 +384,7 @@
   window.addEventListener("DOMContentLoaded", function () {
     const navEntries = window.performance.getEntriesByType("navigation");
     if (navEntries.length > 0 && navEntries[0].type === "reload") {
-      window.location.href = "/";
+      // window.location.href = "/";
       return; 
     }
 
