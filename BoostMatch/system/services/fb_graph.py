@@ -132,6 +132,7 @@ def extract_post_id(fb_url: str):
         "/videos/",
         "/reel/",
         "permalink.php",
+        "story.php", 
         "/v/",
         "/share/" 
     ]):
@@ -169,7 +170,7 @@ def extract_post_id(fb_url: str):
         page_id = query.get("id", [None])[0]
         if story_fbid and page_id:
             return f"{page_id}_{story_fbid}", "post"
-    
+
     # ⚠️ Safe fallback (now protected by validation above)
     match = re.search(r"(\d{8,})", fb_url)
     if match:
