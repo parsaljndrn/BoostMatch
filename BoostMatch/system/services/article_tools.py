@@ -138,12 +138,19 @@ def extract_article_for_nlp(url: str) -> str:
         )
 
     # ✅ CLEAN URL
+    url = _normalize_url(url)
     url = _clean_extracted_url(url)
     url = url.split("?")[0]
 
     try:
-        scraper = cloudscraper.create_scraper()
-        
+        scraper = cloudscraper.create_scraper(
+            browser={
+                'browser': 'chrome',
+                'platform': 'windows',
+                'mobile': False
+            }
+        )
+
         response = scraper.get(
             url,
             headers={**HEADERS, "Referer": "https://www.google.com/"},
