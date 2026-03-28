@@ -87,6 +87,8 @@ def extract_article_headline(url: str) -> str | None:
         # Could not fetch URL
         print(f"[Warning] Failed to fetch article: {url}")
         return None
+    
+    print(response.text[:2000]) 
 
     soup = BeautifulSoup(response.text, "html.parser")
     _clean_dom(soup)
@@ -100,6 +102,8 @@ def extract_article_headline(url: str) -> str | None:
     
     # Optional: translate headline
     headline = _translate_to_english(headline)
+    for meta in soup.find_all("meta"):
+        print(meta)
 
     return headline
 
@@ -224,3 +228,4 @@ def _extract_main_text(soup):
         ]
 
     return " ".join(paragraphs)
+
