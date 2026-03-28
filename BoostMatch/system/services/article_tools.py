@@ -87,14 +87,7 @@ def extract_article_headline(url: str) -> str | None:
     url = url.split("?")[0]
 
     try:
-        scraper = cloudscraper.create_scraper(
-            browser={
-                'browser': 'chrome',
-                'platform': 'windows',
-                'mobile': False
-            }
-        )
-
+        scraper = cloudscraper.create_scraper()
         response = scraper.get(
             url,
             headers={**HEADERS, "Referer": "https://www.google.com/"},
@@ -149,13 +142,7 @@ def extract_article_for_nlp(url: str) -> str:
     url = url.split("?")[0]
 
     try:
-        scraper = cloudscraper.create_scraper(
-            browser={
-                'browser': 'chrome',
-                'platform': 'windows',
-                'mobile': False
-            }
-        )
+        scraper = cloudscraper.create_scraper()
 
         response = scraper.get(
             url,
