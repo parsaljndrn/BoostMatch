@@ -4,6 +4,11 @@ import re
 from urllib.parse import urlparse
 from deep_translator import GoogleTranslator
 from langdetect import detect
+from urllib.parse import urlsplit, urlunsplit
+
+def _normalize_url(url: str) -> str:
+    parts = urlsplit(url)
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
 
 HEADERS = {
     "User-Agent": (
@@ -65,30 +70,22 @@ def _translate_to_english(text: str) -> str:
 # =====================================================
 
 def extract_article_headline(url: str) -> str | None:
-    """
-    Extracts the headline of an article.
-    
-    Returns the headline if extraction succeeds.
-    Returns None if the post does not contain a valid article.
-    """
 
     if not url:
-        # No article link
         return None
 
     if _is_social_or_video_link(url):
-        # Not an article link
         return None
+
+    # ✅ NORMALIZE URL HERE
+    url = _normalize_url(url)
 
     try:
         response = requests.get(url, headers=HEADERS, timeout=15)
         response.raise_for_status()
     except requests.exceptions.RequestException:
-        # Could not fetch URL
         print(f"[Warning] Failed to fetch article: {url}")
         return None
-    
-    print(response.text[:2000]) 
 
     soup = BeautifulSoup(response.text, "html.parser")
     _clean_dom(soup)
@@ -96,14 +93,10 @@ def extract_article_headline(url: str) -> str | None:
     headline = _extract_headline(soup)
 
     if not headline:
-        # Could not extract headline
         print(f"[Warning] Unable to extract headline from: {url}")
         return None
-    
-    # Optional: translate headline
+
     headline = _translate_to_english(headline)
-    for meta in soup.find_all("meta"):
-        print(meta)
 
     return headline
 
@@ -172,22 +165,22 @@ def _clean_dom(soup):
 
 def _extract_headline(soup):
 
-    # 1️⃣ OpenGraph title (most reliable)
+    # 1️⃣ OpenGraph (most reliable)
     og_title = soup.find("meta", property="og:title")
     if og_title and og_title.get("content"):
         return og_title.get("content").strip()
 
-    # ⭐ IMPROVEMENT (Twitter headline support)
+    # 2️⃣ Twitter (if available)
     twitter_title = soup.find("meta", attrs={"name": "twitter:title"})
     if twitter_title and twitter_title.get("content"):
         return twitter_title.get("content").strip()
 
-    # 3️⃣ Standard HTML <title>
+    # 3️⃣ HTML title
     title_tag = soup.find("title")
     if title_tag and title_tag.text:
         return title_tag.text.strip()
 
-    # 4️⃣ First H1
+    # 4️⃣ H1 fallback
     h1_tag = soup.find("h1")
     if h1_tag and h1_tag.text:
         return h1_tag.text.strip()
