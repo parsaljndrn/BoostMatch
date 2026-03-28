@@ -87,7 +87,13 @@ def extract_article_headline(url: str) -> str | None:
     url = url.split("?")[0]
 
     try:
-        scraper = cloudscraper.create_scraper()
+        scraper = cloudscraper.create_scraper(
+            browser={
+                'browser': 'chrome',
+                'platform': 'windows',
+                'mobile': False
+            }
+        )
 
         response = scraper.get(
             url,
