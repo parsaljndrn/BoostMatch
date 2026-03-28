@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 from deep_translator import GoogleTranslator
 from langdetect import detect
 from urllib.parse import urlsplit, urlunsplit
+import cloudscraper
 
 def _normalize_url(url: str) -> str:
     parts = urlsplit(url)
@@ -86,12 +87,13 @@ def extract_article_headline(url: str) -> str | None:
     url = url.split("?")[0]
 
     try:
-        response = requests.get(
+        scraper = cloudscraper.create_scraper()
+
+        response = scraper.get(
             url,
             headers={**HEADERS, "Referer": "https://www.google.com/"},
             timeout=15
         )
-
         print("STATUS CODE:", response.status_code)  # 🔍 DEBUG
 
         response.raise_for_status()
@@ -138,18 +140,20 @@ def extract_article_for_nlp(url: str) -> str:
     # ✅ CLEAN URL
     url = _clean_extracted_url(url)
     url = url.split("?")[0]
-    
+
     try:
-        response = requests.get(
+        scraper = cloudscraper.create_scraper()
+        
+        response = scraper.get(
             url,
             headers={**HEADERS, "Referer": "https://www.google.com/"},
             timeout=15
         )
-    
+
         print("STATUS CODE:", response.status_code)  # 🔍 DEBUG
-    
+
         response.raise_for_status()
-    
+
     except requests.exceptions.RequestException as e:
         raise ValueError(
             f"Failed to fetch the attached article. ({e})"
