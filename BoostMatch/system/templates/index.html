@@ -9,13 +9,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
 
 <nav class="navbar">
   <div class="logo">
     <a href="#hero">
-      <!-- Ensure you have boostlogoblue.png in your static folder -->
       <img src="{{ url_for('static', filename='boostlogoblue.png') }}" alt="BoostMatch Logo">
     </a>
   </div>
@@ -28,72 +28,62 @@
   </ul>
 </nav>
 
-<section class="hero" id="hero">
+<div class="page-block hero" id="hero">
   
-  <div class="hero-bg"></div>
+  <div class="hero-wrapper">
+    <div class="hero-bg"></div>
 
-  <div class="hero-box">
-    
-    <!-- TABS -->
-    <input type="radio" name="toggle" id="tab1" checked hidden>
-    <input type="radio" name="toggle" id="tab2" hidden>
+    <div class="hero-box">
+      
+      <input type="radio" name="toggle" id="tab1" checked hidden>
+      <input type="radio" name="toggle" id="tab2" hidden>
 
-    <h2>Match the link to the content.</h2>
-    <p class="subtitle">
-      BoostMatch helps you confirm that a link is real, relevant, and trustworthy.
-    </p>
+      <h2>Match the link to the content.</h2>
+      <p class="subtitle">
+        BoostMatch helps you confirm that a link is real, relevant, and trustworthy.
+      </p>
 
-    <div class="tabs">
-      <label for="tab1" class="tab-btn">URL Verification</label>
-      <label for="tab2" class="tab-btn">Manual Verification</label>
-      <div class="tab-indicator"></div>
-    </div>
-
-    <!-- FORM SECTION (Integrated Flask Form) -->
-    <div class="verify-card">
-      <div class="content" id="content1">
-        <form method="POST">
-          <label>Enter Facebook Post URL</label>
-          <p class="helper-text">Paste the link you want to verify below.</p>
-          <div class="input-row">
-            <input type="text" name="fb_url" placeholder="https://www.facebook.com/..." required>
-            <button type="submit" class="verify-btn">Analyze</button>
-          </div>
-        </form>
+      <div class="tabs">
+        <label for="tab1" class="tab-btn">URL Verification</label>
+        <label for="tab2" class="tab-btn">Manual Verification</label>
+        <div class="tab-indicator"></div>
       </div>
 
-      <div class="content" id="content2">
-        <form id="manualInputForm" method="POST" action="/">
-          <label for="caption">Manual Input</label>
-          <p class="helper-text">Enter a caption and URL to verify your link.</p>
-          <input 
-            type="text" 
-            id="caption" 
-            name="caption" 
-            placeholder="Caption / Label" 
-            required
-          >
-          <input 
-            type="url" 
-            id="link" 
-            name="link" 
-            placeholder="https://example.com"
-          >
-          <button type="submit" class="verify-btn">Verify</button>
-        </form>
+      <div class="verify-card">
+        <div class="content" id="content1">
+          <form method="POST">
+            <label>Enter Facebook Post URL</label>
+            <p class="helper-text">Paste the link you want to verify below.</p>
+            <div class="input-row">
+              <input type="url" name="fb_url" placeholder="https://www.facebook.com/..." required>
+              <button type="submit" class="verify-btn">Verify</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="content" id="content2">
+          <form id="manualInputForm" method="POST" action="/">
+            <label for="caption">Manual Input</label>
+            <p class="helper-text">Enter a caption and URL to verify your link.</p>
+            <input 
+              type="text" id="caption" name="caption" placeholder="Caption / Label" required
+            >
+            <input type="url" id="link" name="link" placeholder="https://example.com" required>
+            <button type="submit" class="verify-btn">Verify</button>
+          </form>
+        </div>
       </div>
-    </div>
+    </div> 
   </div> 
 
-  <!-- ERROR MESSAGE (Flask) -->
   {% if error %}
-  <div class="results-wrapper" style="display: flex; justify-content: center; animation: none;">
-    <div class="result-card" style="background: #ffebee; color: #c62828; border: 1px solid #c62828;">
+  <div class="results-wrapper error-wrapper">
+    <div class="result-card error-card">
       <div class="result-content">
-        <div class="res-label" style="color: #c62828;">ERROR</div>
+        <div class="res-label">ERROR</div>
         <div class="res-body-main">
           <div class="res-text">
-            <h1 style="color: #c62828;">{{ error }}</h1> 
+            <h3 class="error-text">{{ error }}</h3> 
           </div>
         </div>
       </div>
@@ -108,18 +98,15 @@
     </div>
   </div>
   
-  <!-- RESULTS SECTION (Integrated Flask Results) -->
   {% if result %}
   <div class="results-wrapper" id="resultsSection">
     
-    <!-- LEFT CARD: ANALYSIS (Dark Blue) -->
     <div class="result-card">
       <div class="result-content">
         <div class="res-label">ANALYSIS RESULT</div>
         
         <div class="res-body-main">
           <div class="res-text">
-            <!-- Dynamic Prediction Text -->
             <h1 id="prediction-text">
                 {{ result.prediction }}
             </h1> 
@@ -137,71 +124,35 @@
         </div>
     
         <div class="res-columns">
-          <div class="res-col">
-            <h6>CAPTION</h6>
-            <p class="res-placeholder">{{ result.caption }}</p>
-          </div>
-          <div class="res-col">
-            <h6><label class="form-label">Source Link</label></h6>
-            <p class="res-placeholder">
-                <a href="{{ result.article_link }}" target="_blank" class="form-input" style="text-decoration: none; color: #005fa3; font-weight: bold;">
-            {{ result.article_link }}</a>
-                <label class="form-label">Article Content</label>
-                <textarea class="form-input" rows="10" readonly style="resize: none; background: #f2f6f9;">{{ result.article_text }}
-                </textarea>
-            </p>
-          </div>
+            <div class="res-col">
+              <h6>CAPTION</h6>
+              <div class="res-text-container">
+                <p class="res-data-text truncate-text">{{ result.caption }}</p>
+                <button type="button" class="read-more-btn" onclick="toggleReadMore(this)">... more</button>
+              </div>
+            </div>
+            
+            <div class="res-col res-col-source">
+              <h6>ARTICLE CONTENT</h6>
+              <div class="res-text-container">
+                <div class="res-data-content truncate-text">{{ result.article_text }}</div>
+                <button type="button" class="read-more-btn" onclick="toggleReadMore(this)">... more</button>
+              </div>
+            </div>
         </div>
       </div>
-    
-      <!-- This button now acts as "View Evidence" -->
+
       <div class="result-footer">
-        <span>View Article Evidence</span>
-        <button class="report-btn" id="openReport">Report</button>
-      </div>
-    </div>
-    <!-- RIGHT CARD: REPORT FORM (Light Blue) -->
-    <div class="report-card">
-      <div class="report-inner">
-        <div class="report-header">
-          <h3>Report Issue</h3>
-        </div>
-        
-        <!-- Report Form -->
-        <form class="report-form" action="/report" method="POST">
-          <div class="radio-group">
-            <label class="radio-option">
-              <input type="radio" name="issue_type" value="misleading" required> <span>Inaccurate/misleading</span>
-            </label>
-            <label class="radio-option">
-              <input type="radio" name="issue_type" value="mismatch"> <span>Caption-link mismatch</span>
-            </label>
-            <label class="radio-option">
-              <input type="radio" name="issue_type" value="source"> <span>Unreliable source</span>
-            </label>
-            <label class="radio-option">
-              <input type="radio" name="issue_type" value="other"> <span>Other</span>
-            </label>
-          </div>
-
-          <label class="form-label">Feedback</label>
-          <textarea class="form-input" name="feedback" rows="3" placeholder="Tell us more..."></textarea>
-          
-          <label class="form-label">Email</label>
-          <input type="email" class="form-input" name="email" placeholder="name@example.com">
-
-          <div class="form-actions">
-            <button type="button" class="cancel-btn" id="closeReport">Cancel</button>
-            <button type="submit" class="submit-btn">Submit Report</button>
-          </div>
-        </form>
+        <span class="res-footer-text">
+          <i class="fa-solid fa-file-contract"></i> Article found: <a href="{{ result.article_link }}" target="_blank">View Article Evidence</a>
+        </span>
       </div>
     </div>
   </div> 
   {% endif %}
-</section>
+</div>
 
-<section class="quick-tips" id="quick-tips">
+<div class="page-block quick-tips" id="quick-tips">
   <h3>Quick Tips</h3>
   
   <div class="tips" id="tips-url">
@@ -215,38 +166,41 @@
     <div class="tip">URLs must include the protocol (http:// or https://)</div>
     <div class="tip">Valid example: https://www.facebook.com/...</div>
   </div>
-  
-</section>
+</div>
 
-<section class="about" id="about">
+<div class="page-block about" id="about">
   <div class="about-content">
     <div class="about-text">
       <h3>ABOUT BOOSTMATCH</h3>
       <p>
-       BoostMatch is a web-based verification tool designed to help users identify misleading social media posts, particularly those containing captions and external links. With the growing volume of information shared online, users are often exposed to posts where the caption does not accurately represent the linked content. BoostMatch addresses this issue by analyzing the relationship between a post's caption and its attached link to determine whether they are aligned or potentially misleading. The system is intended to support critical information consumption by providing an accessible and easy-to-use verification platform for everyday social media users.      </p>
+       BoostMatch is a web-based verification tool designed to help users identify misleading social media posts, particularly those containing captions and external links. With the growing volume of information shared online, users are often exposed to posts where the caption does not accurately represent the linked content. BoostMatch addresses this issue by analyzing the relationship between a post's caption and its attached link to determine whether they are aligned or potentially misleading. The system is intended to support critical information consumption by providing an accessible and easy-to-use verification platform for everyday social media users.
+      </p>
     </div>
     <div class="about-logo">
-        <img src="{{ url_for('static', filename='boostlogoblue.png') }}" alt="BoostMatch Logo" class="side-logo">
+        <img src="{{ url_for('static', filename='WHITELOGO.png') }}" alt="BoostMatch Logo" class="side-logo">
     </div>
   </div>
-</section>
+</div>
 
-<section class="info" id="info">
+<div class="page-block info" id="info">
   <div class="card">
+    <i class="fa-solid fa-magnifying-glass icon"></i>
     <h4>How does it Work?</h4>
     <p>BoostMatch examines a social media post by analyzing the relationship between the caption and the linked content.</p>
   </div>
   <div class="card">
+    <i class="fa-solid fa-shield-halved icon"></i>
     <h4>How we Verify?</h4>
     <p>The system applies semantic analysis to understand meaning and stylometric analysis to examine writing style.</p>
   </div>
   <div class="card">
+    <i class="fa-regular fa-lightbulb icon"></i>
     <h4>Why this Matters?</h4>
     <p>Misleading social media posts can spread rapidly. BoostMatch supports users in verifying information before sharing.</p>
   </div>
-</section>
+</div>
 
-<section class="developers" id="developers">
+<div class="page-block developers" id="developers">
   <h3>DEVELOPERS</h3>
   <div class="devs">
     
@@ -256,7 +210,8 @@
       </div>
       <div class="dev-info">
         <span class="dev-name">Paris Alejandrino</span>
-        <span class="dev-role">ROLE</span>
+        <span class="dev-course dev-details-minor">Computer Science</span>
+        <span class="dev-email dev-details-minor">alejandrino.parisdune@ue.edu.ph</span>
       </div>
     </div>
 
@@ -266,7 +221,8 @@
       </div>
       <div class="dev-info">
         <span class="dev-name">Janessa Manuel</span>
-        <span class="dev-role">ROLE</span>
+        <span class="dev-course dev-details-minor">Computer Science</span>
+        <span class="dev-email dev-details-minor">janessamanuel@email.com</span>
       </div>
     </div>
 
@@ -276,7 +232,8 @@
       </div>
       <div class="dev-info">
         <span class="dev-name">Ardyson Marcelo</span>
-        <span class="dev-role">ROLE</span>
+        <span class="dev-course dev-details-minor">Computer Science</span>
+        <span class="dev-email dev-details-minor">marcelo.ardysondominic@ue.edu.ph</span>
       </div>
     </div>
 
@@ -286,7 +243,8 @@
       </div>
       <div class="dev-info">
         <span class="dev-name">Adrian Libarios</span>
-        <span class="dev-role">ROLE</span>
+         <span class="dev-course dev-details-minor">Computer Science</span>
+        <span class="dev-email dev-details-minor">libarios.adrianvincent@ue.edu.ph</span>
       </div>
     </div>
 
@@ -296,38 +254,45 @@
       </div>
       <div class="dev-info">
         <span class="dev-name">Mico Mempin</span>
-        <span class="dev-role">ROLE</span>
+        <span class="dev-course dev-details-minor">Computer Science</span>
+        <span class="dev-email dev-details-minor">mempin.micojohn@ue.edu.ph</span>
       </div>
     </div>
 
   </div>
-</section>
-
-{% if error %}
-<script>
-  const loadingOverlay = document.getElementById("loading-overlay");
-  if (loadingOverlay) {
-    loadingOverlay.style.display = "none";
-  }
-</script>
-{% endif %}
+</div>
 
 <script>
-  const verifyButtons = document.querySelectorAll('.verify-btn');
   const resultsWrapper = document.getElementById('resultsSection');
-  const openReportBtn = document.getElementById('openReport');
-  const closeReportBtn = document.getElementById('closeReport');
   const tab1 = document.getElementById('tab1');
   const tab2 = document.getElementById('tab2');
 
   const tipsUrl = document.getElementById('tips-url');
   const tipsManual = document.getElementById('tips-manual');
   
-  loadingOverlay = document.getElementById("loading-overlay");
-  if (loadingOverlay) {
-    loadingOverlay.style.display = "none";
+  const loadingOverlay = document.getElementById("loading-overlay");
+
+  // --- BROWSER HISTORY API INTEGRATION ---
+  
+  function pushBrowserState(tabId) {
+    const state = { tab: tabId };
+    window.history.pushState(state, "", "");
   }
-  verifyButtons.forEach(button => {
+
+  window.addEventListener('popstate', (event) => {
+    if (event.state) {
+      if (event.state.tab === 'tab2') {
+        tab2.checked = true;
+        tipsUrl.style.display = 'none';
+        tipsManual.style.display = 'flex';
+      } else {
+        tab1.checked = true;
+        tipsUrl.style.display = 'flex';
+        tipsManual.style.display = 'none';
+      }
+    }
+  });
+    verifyButtons.forEach(button => {
     button.addEventListener('click', (e) => {
       const captionInput = document.getElementById("caption");
       const fbUrlInput = document.querySelector("input[name='fb_url']");
@@ -365,57 +330,80 @@
     });
   });
 
-  // SLIDE to Report Mode (View Evidence)
-  if (openReportBtn) {
-  openReportBtn.addEventListener('click', () => {
-    resultsWrapper.classList.add('report-active');
-  });
+  // --- EXISTING UI FUNCTIONS ---
+
+  function toggleReadMore(btn) {
+    const target = btn.previousElementSibling;
+    if (target.classList.contains('truncate-text')) {
+      target.classList.remove('truncate-text');
+      target.classList.add('expanded-text');
+      btn.textContent = 'Show less';
+    } else {
+      target.classList.add('truncate-text');
+      target.classList.remove('expanded-text');
+      btn.textContent = '... more';
     }
-
-  // SLIDE BACK
-  closeReportBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    resultsWrapper.classList.remove('report-active');
-  });
-
-  // Reset Tab Switch
-  function resetAll() {
-    resultsWrapper.style.display = 'none';
-    resultsWrapper.classList.remove('report-active');
   }
 
-  // Tab 1 (URL Verification)
+  // Connect Loader to Form Submissions (Waits for validation!)
+  const verifyForms = document.querySelectorAll('.content form');
+  
+  verifyForms.forEach(form => {
+    form.addEventListener('submit', () => {
+      // This will ONLY run if the browser confirms all 'required' fields are filled
+      if(resultsWrapper){
+        resultsWrapper.style.display = "none";
+      }
+      if(loadingOverlay){
+        loadingOverlay.style.display = "flex";
+      }
+    });
+  });
+
+  function resetAll() {
+    if(resultsWrapper) {
+      resultsWrapper.style.display = 'none';
+    }
+  }
+
   tab1.addEventListener('change', () => {
     resetAll();
     tipsUrl.style.display = 'flex';     
     tipsManual.style.display = 'none';  
+    pushBrowserState('tab1');
   });
 
-  // Tab 2 (Manual Verification)
   tab2.addEventListener('change', () => {
     resetAll();
     tipsUrl.style.display = 'none';     
     tipsManual.style.display = 'flex';  
+    pushBrowserState('tab2');
   });
 
   window.addEventListener("DOMContentLoaded", function () {
-    const resultsWrapper = document.getElementById("resultsSection");
-    const loadingOverlay = document.getElementById("loading-overlay");
+    const navEntries = window.performance.getEntriesByType("navigation");
+    if (navEntries.length > 0 && navEntries[0].type === "reload") {
+      window.location.href = "/";
+      return; 
+    }
 
-    // Hide loader once page loads
-    if(loadingOverlay){
+    if (loadingOverlay) {
       loadingOverlay.style.display = "none";
     }
 
-    if (resultsWrapper) {
-      resultsWrapper.style.display = "flex";
-      resultsWrapper.scrollIntoView({ behavior: "smooth", block: "start" });
+    const initialTab = tab2 && tab2.checked ? 'tab2' : 'tab1';
+    window.history.replaceState({ tab: initialTab }, "", "");
+
+    const visibleResult = document.querySelector('.results-wrapper');
+    if (visibleResult) {
+      visibleResult.style.display = "flex";
+      setTimeout(() => {
+        visibleResult.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
     }
   });
-
 </script>
 
-<!-- SVG Filter for Logo Outline -->
 <svg style="width:0; height:0; position:absolute;" aria-hidden="true" focusable="false">
   <filter id="solid-outline">
     <feMorphology in="SourceAlpha" result="expanded" operator="dilate" radius="0.5"></feMorphology>
