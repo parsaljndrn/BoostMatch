@@ -537,7 +537,6 @@ input[type="url"], input[type="text"] {
   margin-bottom: 40px; 
   text-align: center; 
 }
-
 .tips { 
   display: flex; 
   gap: 70px; 
@@ -977,4 +976,118 @@ input[type="url"], input[type="text"] {
 /* Fix body overflow */
 body {
   overflow-x: hidden;
+}
+
+/* === 6-BOX QUICK TIPS GRID === */
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+  max-width: 1200px;
+  width: 100%;
+  justify-items: center;
+  margin: 0 auto;
+}
+
+.tip {
+  background: #f2f6f9;
+  padding: 35px 25px;
+  border-radius: 15px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  font-size: 15px;
+  font-style: italic;
+  color: #005fa3;
+  text-align: left;
+  line-height: 1.5;
+  position: relative;
+  box-shadow: 0 6px 20px rgba(39, 39, 39, 0.15);
+  transition: all 0.3s ease;
+  width: 100%;
+  max-width: 300px;
+}
+
+.tip:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 30px rgba(0, 95, 163, 0.2);
+}
+
+.icon-tip {
+  font-size: 28px;
+  color: #005fa3;
+  margin-bottom: 12px;
+  width: 32px;
+  text-align: center;
+}
+
+.tip div {
+  font-weight: 500;
+}
+
+/* Remove old ::after connector */
+.tip:not(:last-child)::after {
+  display: none !important;
+}
+
+/* Mobile grid */
+@media (max-width: 768px) {
+  .tips-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .tip {
+    max-width: 90% !important;
+    width: 100%;
+    padding: 25px 20px;
+  }
+}
+
+.tips-grid h3 {
+  grid-column: 1 / -1; /* Full width */
+  font-size: 32px !important;
+  font-weight: 800 !important;
+  color: #005fa3 !important;
+  margin: 40px 0 30px 0 !important;
+  text-align: center !important;
+  letter-spacing: -0.5px;
+  position: relative;
+  padding-bottom: 15px;
+}
+
+/* Subtle underline */
+.tips-grid h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: #005fa3;
+  border-radius: 2px;
+  opacity: 0.8;
+}
+
+/* First h3 no top margin */
+.tips-grid h3:first-of-type {
+  margin-top: 20px !important;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .tips-grid h3 {
+    font-size: 26px !important;
+    margin: 30px 0 25px 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .tips-grid h3 {
+    font-size: 22px !important;
+    margin: 25px 0 20px 0 !important;
+  }
 }
