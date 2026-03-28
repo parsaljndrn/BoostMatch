@@ -90,7 +90,11 @@ def normalize_facebook_url(url: str) -> str:
         return qs.get("u", [url])[0]
 
     # ✅ Resolve fb.watch and /share/
-    if "fb.watch" in parsed.netloc or "/share/" in parsed.path:
+    if (
+        "fb.watch" in parsed.netloc or
+        "/share/" in parsed.path or
+        "pfbid" in url   # 🔥 ADD THIS
+    ):
         return resolve_redirect(url)
 
     return url
