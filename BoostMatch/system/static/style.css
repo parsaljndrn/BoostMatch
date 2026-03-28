@@ -980,94 +980,33 @@ body {
 
 /* === 6-BOX QUICK TIPS GRID === */
 .tips-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 25px;
-  max-width: 1200px;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
   width: 100%;
-  justify-content: center;        /* ← CENTER THE GRID */
-  justify-items: center;          /* ← CENTER EACH ITEM */
-  align-items: start;             /* ← Align to top */
+  max-width: 1300px;
+  margin: 0 auto 60px;
+  justify-content: center;
   justify-items: center;
-  margin: 0 auto;
-}
-
-.tip {
-  background: #f2f6f9;
-  padding: 35px 25px;
-  border-radius: 15px;
-  min-height: 120px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  font-size: 15px;
-  font-style: italic;
-  color: #005fa3;
-  text-align: left;
-  line-height: 1.5;
-  position: relative;
-  box-shadow: 0 6px 20px rgba(39, 39, 39, 0.15);
-  transition: all 0.3s ease;
-  width: 100%;
-  max-width: 300px;
-}
-
-.tip:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 30px rgba(0, 95, 163, 0.2);
-}
-
-.icon-tip {
-  font-size: 28px;
-  color: #005fa3;
-  margin-bottom: 12px;
-  width: 32px;
-  text-align: center;
-}
-
-.tip div {
-  font-weight: 500;
-}
-
-/* Remove old ::after connector */
-.tip:not(:last-child)::after {
-  display: none !important;
-}
-
-/* Mobile grid */
-@media (max-width: 768px) {
-  .tips-grid {
-    grid-template-columns: 1fr !important;
-    gap: 25px;
-    padding: 0 15px;
-  }
-  
-  .tips-grid h3 {
-    font-size: 26px !important;
-    margin: 30px 0 20px 0 !important;
-    max-width: 90%;
-  }
-  
-  .tip {
-    max-width: 95% !important;
-    width: 100%;
-  }
+  align-items: start;
+  padding: 0 20px;
+  box-sizing: border-box;
 }
 
 .tips-grid h3 {
-  grid-column: 1 / -1; /* Full width */
+  grid-column: 1 / -1 !important;
+  justify-self: center !important;
+  width: 100%;
+  max-width: 600px;
   font-size: 32px !important;
   font-weight: 800 !important;
   color: #005fa3 !important;
-  margin: 40px 0 30px 0 !important;
+  margin: 40px 0 25px 0 !important;
   text-align: center !important;
-  letter-spacing: -0.5px;
   position: relative;
   padding-bottom: 15px;
 }
 
-/* Subtle underline */
 .tips-grid h3::after {
   content: '';
   position: absolute;
@@ -1076,27 +1015,83 @@ body {
   transform: translateX(-50%);
   width: 80px;
   height: 3px;
-  background: #005fa3;
+  background: linear-gradient(90deg, #005fa3, #89b3cf);
   border-radius: 2px;
-  opacity: 0.8;
 }
 
-/* First h3 no top margin */
 .tips-grid h3:first-of-type {
   margin-top: 20px !important;
 }
 
-/* Mobile */
-@media (max-width: 768px) {
-  .tips-grid h3 {
-    font-size: 26px !important;
-    margin: 30px 0 25px 0 !important;
-  }
+.tip {
+  width: 100% !important;
+  max-width: 320px !important;
+  background: linear-gradient(145deg, #f8fbff, #f2f6f9) !important;
+  padding: 35px 25px !important;
+  border-radius: 20px !important;
+  min-height: 130px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  font-style: italic !important;
+  color: #005fa3 !important;
+  text-align: left !important;
+  line-height: 1.6 !important;
+  box-shadow: 0 8px 25px rgba(0, 95, 163, 0.12) !important;
+  border: 1px solid rgba(0, 95, 163, 0.1) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
 }
 
-@media (max-width: 480px) {
+.tip::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #005fa3, #89b3cf);
+}
+
+.tip:hover {
+  transform: translateY(-8px) !important;
+  box-shadow: 0 20px 40px rgba(0, 95, 163, 0.25) !important;
+}
+
+.icon-tip {
+  font-size: 26px !important;
+  color: #005fa3 !important;
+  margin-bottom: 12px !important;
+  width: 36px !important;
+  text-align: center !important;
+}
+
+.tip div {
+  font-weight: 500;
+}
+.tips {
+  display: none !important;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .tips-grid {
+    grid-template-columns: 1fr !important;
+    gap: 25px !important;
+    padding: 0 15px !important;
+  }
+  
   .tips-grid h3 {
-    font-size: 22px !important;
-    margin: 25px 0 20px 0 !important;
+    font-size: 24px !important;
+    margin: 30px 0 20px 0 !important;
+  }
+  
+  .tip {
+    max-width: 100% !important;
+    width: 100% !important;
   }
 }
