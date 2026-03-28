@@ -127,7 +127,7 @@ def extract_article_for_nlp(url: str) -> str:
 
     if not url:
         raise ValueError(
-                "Please paste an input with an article link."
+                "Please paste an input with a valid article link."
         )
 
     if _is_social_or_video_link(url):
