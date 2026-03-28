@@ -163,13 +163,13 @@ def extract_post_id(fb_url: str):
         return share_match.group(1), "post"
     
     # Permalink.php
-    if "permalink.php" in path:
+    if "permalink.php" in path or "story.php" in path:
         query = parse_qs(parsed.query)
         story_fbid = query.get("story_fbid", [None])[0]
         page_id = query.get("id", [None])[0]
         if story_fbid and page_id:
             return f"{page_id}_{story_fbid}", "post"
-
+    
     # ⚠️ Safe fallback (now protected by validation above)
     match = re.search(r"(\d{8,})", fb_url)
     if match:
