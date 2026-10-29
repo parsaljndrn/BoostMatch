@@ -13,13 +13,28 @@
 </head>
 <body>
 
+
 <nav class="navbar">
   <div class="logo">
     <a href="#hero">
-      <img src="{{ url_for('static', filename='boostlogoblue.png') }}" alt="BoostMatch Logo">
+      <img src="{{ url_for('static', filename='boostlogoblue.png') }}"
+           alt="BoostMatch Logo">
     </a>
   </div>
-  <ul class="nav-links">
+
+  <!-- Hamburger button -->
+  <button class="menu-toggle"
+          id="menu-toggle"
+          aria-label="Open navigation menu"
+          aria-expanded="false"
+          aria-controls="nav-links">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+
+  <!-- Navigation links -->
+  <ul class="nav-links" id="nav-links">
     <li><a href="#hero">Verify</a></li>
     <li><a href="#quick-tips">Tips</a></li>
     <li><a href="#about">About</a></li>
@@ -435,6 +450,32 @@
       }, 150);
     }
   });
+  
+const menuToggle = document.getElementById("menu-toggle");
+const navLinks = document.getElementById("nav-links");
+
+// Open and close the hamburger menu
+menuToggle.addEventListener("click", () => {
+  const isOpen = navLinks.classList.toggle("active");
+
+  menuToggle.classList.toggle("active", isOpen);
+  menuToggle.setAttribute("aria-expanded", isOpen);
+  menuToggle.setAttribute(
+    "aria-label",
+    isOpen ? "Close navigation menu" : "Open navigation menu"
+  );
+});
+
+// Close the menu after selecting a section
+navLinks.querySelectorAll("a").forEach(link => {
+  link.addEventListener("click", () => {
+    navLinks.classList.remove("active");
+    menuToggle.classList.remove("active");
+    menuToggle.setAttribute("aria-expanded", "false");
+    menuToggle.setAttribute("aria-label", "Open navigation menu");
+  });
+});
+
 </script>
 
 <svg style="width:0; height:0; position:absolute;" aria-hidden="true" focusable="false">
