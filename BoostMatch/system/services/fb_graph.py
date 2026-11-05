@@ -225,6 +225,11 @@ def normalize_language(text: str):
         
     try:
         language = detect(text_for_detection)
+        print("\n===== CAPTION LANGUAGE DEBUG =====")
+        print("Detected language:", language)
+        print("Caption length:", len(text))
+        print("Caption preview:", text[:150])
+        print("==================================\n")
     except:
         return text, "unknown"
         
@@ -234,8 +239,12 @@ def normalize_language(text: str):
     try:
         translated = GoogleTranslator(source="auto", target="en").translate(text)
         return translated, language
-    except:
-        return text, language
+    except Exception as e:
+        print("[TRANSLATION ERROR]", str(e))
+        raise ValueError(
+            "Translation service is temporarily unavailable. "
+            "Please try again later."
+        )
 
 # =========================================================
 # ATTACHMENT URL EXTRACTION

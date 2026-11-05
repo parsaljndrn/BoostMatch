@@ -46,6 +46,11 @@ def _translate_to_english(text: str) -> str:
 
     try:
         lang = detect(text)
+        print("\n===== ARTICLE LANGUAGE DEBUG =====")
+        print("Detected language:", lang)
+        print("Article text length:", len(text))
+        print("Article preview:", text[:150])
+        print("==================================\n")
 
         # Skip translation if already English
         if lang == "en":
@@ -62,8 +67,11 @@ def _translate_to_english(text: str) -> str:
         return translator.translate(text)
 
     except Exception as e:
-        print(f"[Warning] Translation failed: {e}")
-        return text
+        print(f"[TRANSLATION ERROR] {e}")
+        raise ValueError(
+            "Translation service is temporarily unavailable. "
+            "Please try again later."
+        )
     
 
 # =====================================================
