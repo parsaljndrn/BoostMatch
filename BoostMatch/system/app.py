@@ -108,16 +108,10 @@ def index():
                 if re.fullmatch(url_pattern, caption):
                     raise ValueError("Cannot analyze input: caption appears to be only a link. Please enter actual text.")
 
-                # --- TRANSLATE & NORMALIZE MANUAL CAPTION LIKE FB PATH ---
-                from deep_translator import GoogleTranslator
-
-                # 1. Translate to English if not already
-                translated_caption = GoogleTranslator(source='auto', target='en').translate(caption)
-
-                # 2. Normalize text exactly like FB captions
-                normalized_caption = normalize_text(translated_caption)
-
-                # 3. Normalize link too (optional)
+                # --- NORMALIZE MANUAL CAPTION ---
+                normalized_caption = normalize_text(caption)
+                
+                # Normalize link
                 normalized_link = normalize_text(link) if link else None
 
                 print("CALLING ANALYSIS FUNCTION NOW")
@@ -130,7 +124,7 @@ def index():
                 )
 
                 print("ANALYSIS FUNCTION COMPLETED")
-                
+
                 session['result'] = {
                     "prediction": result['prediction'],
                     "similarity": round(result['cosine_similarity'] * 100, 2) if result['cosine_similarity'] else None,
