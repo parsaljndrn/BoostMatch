@@ -35,6 +35,12 @@ def index():
         caption = request.form.get("caption", "").strip()
         link = request.form.get("link", "").strip() or None
 
+        print("===== MANUAL ROUTE DEBUG =====")
+        print("Caption received:", bool(caption))
+        print("Link received:", bool(link))
+        print("Caption length:", len(caption or ""))
+        print("About to call analysis function")
+
         print("Python executable:", sys.executable)
         print("Python version:", sys.version)
         print("Faster-Whisper version:", faster_whisper.__version__)
@@ -114,6 +120,8 @@ def index():
                 # 3. Normalize link too (optional)
                 normalized_link = normalize_text(link) if link else None
 
+                print("CALLING ANALYSIS FUNCTION NOW")
+
                 # 4. Classify
                 result = classify_post(
                     caption=normalized_caption,
@@ -121,6 +129,8 @@ def index():
                     video_url=None
                 )
 
+                print("ANALYSIS FUNCTION COMPLETED")
+                
                 session['result'] = {
                     "prediction": result['prediction'],
                     "similarity": round(result['cosine_similarity'] * 100, 2) if result['cosine_similarity'] else None,
