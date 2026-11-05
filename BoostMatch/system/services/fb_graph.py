@@ -237,14 +237,13 @@ def normalize_language(text: str):
         return text, "en"
         
     try:
+        print("TRANSLATION REQUEST TRIGGERED")
+        print("Source language:", language)
         translated = GoogleTranslator(source="auto", target="en").translate(text)
         return translated, language
     except Exception as e:
-        print("[TRANSLATION ERROR]", str(e))
-        raise ValueError(
-            "Translation service is temporarily unavailable. "
-            "Please try again later."
-        )
+        print("TRANSLATION FAILED:", repr(e))
+        return text, language
 
 # =========================================================
 # ATTACHMENT URL EXTRACTION
